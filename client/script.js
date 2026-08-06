@@ -1,5 +1,5 @@
-// 1. Оголошуємо сокет ЛИШЕ ОДИН РАЗ на самому початку файлу (перевірте, щоб вище не було const socket)
-const socket = io('https://vytrebenky.onrender.com');
+var socket = window.socket || io('https://vytrebenky.onrender.com');
+window.socket = socket;
 
 // 2. Слухаємо повідомлення чату
 socket.on('chat_message', (data) => {
