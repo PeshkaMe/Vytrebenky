@@ -94,11 +94,7 @@ io.on('connection', (socket) => {
             accounts[name].data = data;
         }
     });
-
-    // Чат
-    socket.on('send_chat_message', (data) => {
-        io.emit('chat_message', data);
-    });
+
 });
 
 // Port підтримка для Render.com (через process.env.PORT)
