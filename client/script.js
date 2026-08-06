@@ -1,26 +1,38 @@
-const socket = io('https://vytrebenky.onrender.com'); // підстав своє посилання з Render
+// 1. Оголошуємо сокет ЛИШЕ ОДИН РАЗ на самому початку файлу (перевірте, щоб вище не було const socket)
+const socket = io('https://vytrebenky.onrender.com');
 
-// Отримання повідомлень чату
+// 2. Слухаємо повідомлення чату
 socket.on('chat_message', (data) => {
     addLog(`[${data.user}]: ${data.text}`, 'clear');
 });
 
-// Відповідь сервера із збереженими даними
+// 3. Відповідь сервера із збереженими даними
 socket.on('player_loaded', (savedPlayer) => {
     if (savedPlayer) {
         player = savedPlayer; // Відновлюємо збереженого персонажа
-        updateUI();
+        if (typeof updateUI === 'function') updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
         addLog("Створено нового персонажа.", "yellow");
     }
 });
 
-// Отримання повідомлень від сервера
-socket.on('chat_message', (data) => {
-    addLog(`[${data.user}]: ${data.text}`, 'clear');
-});
+// 4. Функція відправки повідомлень
+function sendFakeChatMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
 
+    // Безпечна перевірка наявності об'єкта player
+    const userName = (typeof player !== 'undefined' && player && player.name) ? player.name : 'Гість';
+
+    socket.emit('send_chat_message', {
+        user: userName,
+        text: text
+    });
+
+    input.value = "";
+}
 // ==========================================
 // 1. КОНСТАНТИ ТА БАЗОВІ ДАНІ ГРИ
 // ==========================================
@@ -359,19 +371,6 @@ function switchTab(tab) {
     if (tab === 'shop') renderShop();
     if (tab === 'quests') renderQuests();
     if (tab === 'blacksmith') renderBlacksmith();
-}
-
-function sendFakeChatMessage() {
-    const input = document.getElementById('chat-input');
-    const text = input.value.trim();
-    if (!text) return;
-
-    socket.emit('send_chat_message', {
-        user: player.name || 'Гість',
-        text: text
-    });
-
-    input.value = "";
 }
 
 // ==========================================
