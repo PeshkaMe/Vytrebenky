@@ -1,15 +1,16 @@
 var socket = window.socket || io('https://vytrebenky.onrender.com');
 window.socket = socket;
 
-// 2. Слухаємо повідомлення чату
+// ==========================================
+// 1. СОКЕТИ ТА ОБРОБКА СЕРВЕРА
+// ==========================================
 socket.on('chat_message', (data) => {
     addLog(`[${data.user}]: ${data.text}`, 'clear');
 });
 
-// 3. Відповідь сервера із збереженими даними
 socket.on('player_loaded', (savedPlayer) => {
     if (savedPlayer) {
-        player = savedPlayer; // Відновлюємо збереженого персонажа
+        player = savedPlayer;
         if (typeof updateUI === 'function') updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
@@ -17,24 +18,6 @@ socket.on('player_loaded', (savedPlayer) => {
     }
 });
 
-// 4. Функція відправки повідомлень
-function sendFakeChatMessage() {
-    const input = document.getElementById('chat-input');
-    const text = input.value.trim();
-    if (!text) return;
-
-    // Безпечна перевірка наявності об'єкта player
-    const userName = (typeof player !== 'undefined' && player && player.name) ? player.name : 'Гість';
-
-    socket.emit('send_chat_message', {
-        user: userName,
-        text: text
-    });
-
-    input.value = "";
-}
-
-// Відповідь про успішну авторизацію/реєстрацію
 socket.on('auth_success', (res) => {
     currentUser = res.username;
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
@@ -46,14 +29,28 @@ socket.on('auth_success', (res) => {
     updateUI();
 });
 
-// Помилка авторизації
 socket.on('auth_error', (errorMsg) => {
     const errorElem = document.getElementById('auth-error');
     if (errorElem) errorElem.textContent = errorMsg;
 });
 
+function sendFakeChatMessage() {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const userName = (typeof player !== 'undefined' && player && player.name) ? player.name : 'Гість';
+
+    socket.emit('send_chat_message', {
+        user: userName,
+        text: text
+    });
+
+    input.value = "";
+}
+
 // ==========================================
-// 1. КОНСТАНТИ ТА БАЗОВІ ДАНІ ГРИ
+// 2. КОНСТАНТИ ТА БАЗОВІ ДАНІ ГРИ
 // ==========================================
 const REAL_PRODUCTS = {
     "baguette_01": { name: "🥖 Хрусткий Багет", goldCost: 15, realPrice: 45 },
@@ -89,9 +86,8 @@ const DAILY_QUESTS = [
 ];
 
 // ==========================================
-// 2. АВТОРИЗАЦІЯ (з міграцією)
+// 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
-let users = JSON.parse(localStorage.getItem('vanilla_rpg_users')) || {};
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
 
 let guestPlayer = {
@@ -107,85 +103,11 @@ let guestPlayer = {
     dailyQuests: { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null }
 };
 
-let player;
-
-function migrateItem(item) {
-    if (!item) return null;
-    // Якщо предмет не має типу або це старі дані
-    if (!item.type) {
-        const template = EQUIPMENT_TEMPLATES.find(t => t.id === item.id);
-        if (template) {
-            return {
-                type: 'equip',
-                id: template.id,
-                instanceId: item.instanceId || (Date.now().toString() + Math.random()),
-                status: item.status || 'DROPPED',
-                attack: item.attack !== undefined ? item.attack : template.attack,
-                defense: item.defense !== undefined ? item.defense : template.defense,
-                hp: item.hp !== undefined ? item.hp : template.hp,
-                mp: item.mp !== undefined ? item.mp : template.mp,
-                sp: item.sp !== undefined ? item.sp : template.sp,
-                icon: template.icon,
-                name: template.name,
-                slot: template.slot,
-                sellPrice: template.sellPrice,
-                upgradeLevel: item.upgradeLevel || 0
-            };
-        } else {
-            return null; // невідомий предмет — видаляємо
-        }
-    }
-    if (item.type === 'equip') {
-        const template = EQUIPMENT_TEMPLATES.find(t => t.id === item.id);
-        if (template) {
-            return {
-                ...item,
-                attack: item.attack !== undefined ? item.attack : template.attack,
-                defense: item.defense !== undefined ? item.defense : template.defense,
-                hp: item.hp !== undefined ? item.hp : template.hp,
-                mp: item.mp !== undefined ? item.mp : template.mp,
-                sp: item.sp !== undefined ? item.sp : template.sp,
-                icon: template.icon,
-                name: template.name,
-                slot: template.slot,
-                sellPrice: item.sellPrice !== undefined ? item.sellPrice : template.sellPrice,
-                upgradeLevel: item.upgradeLevel || 0
-            };
-        } else {
-            return null;
-        }
-    }
-    if (item.type === 'license' || item.type === 'consumable') {
-        return item;
-    }
-    return null;
-}
+let player = guestPlayer;
 
 function loadPlayer() {
-    if (currentUser && users[currentUser]) {
-        player = users[currentUser].data;
-
-        // Міграція інвентаря
-        if (player.inventory) {
-            player.inventory = player.inventory.map(migrateItem).filter(item => item !== null);
-        } else {
-            player.inventory = [];
-        }
-
-        // Міграція екіпіровки
-        if (!player.equipment) {
-            player.equipment = { weapon: null, armor: null, helmet: null, accessory: null };
-        } else {
-            for (let slot in player.equipment) {
-                player.equipment[slot] = migrateItem(player.equipment[slot]);
-            }
-        }
-
-        if (player.currentHP === undefined) player.currentHP = 120;
-        if (player.currentMP === undefined) player.currentMP = 15;
-        if (player.currentSP === undefined) player.currentSP = 60;
-        if (!player.dailyQuests) player.dailyQuests = { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null };
-        checkDailyReset();
+    if (currentUser) {
+        socket.emit('load_player', currentUser);
     } else {
         player = guestPlayer;
         checkDailyReset();
@@ -194,7 +116,6 @@ function loadPlayer() {
 
 function savePlayerData() {
     if (player && player.name) {
-        // Відправляємо на сервер нікнейм та об'єкт персонажа
         socket.emit('save_player', {
             name: player.name,
             data: player
@@ -202,13 +123,9 @@ function savePlayerData() {
     }
 }
 
-// При вході чи виборі нікнейму викликаємо завантаження:
-function loadPlayerData(name) {
-    socket.emit('load_player', name);
-}
-
 function updateAuthButton() {
     const btn = document.getElementById('auth-button');
+    if (!btn) return;
     if (currentUser) {
         btn.textContent = currentUser;
         btn.onclick = logout;
@@ -224,7 +141,9 @@ function openAuthModal() {
     switchAuthTab('login');
 }
 
-function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
+function closeAuthModal() { 
+    document.getElementById('auth-modal').classList.add('hidden'); 
+}
 
 function switchAuthTab(tab) {
     document.getElementById('tab-login').classList.toggle('active', tab === 'login');
@@ -275,16 +194,6 @@ function login() {
         password: password
     });
 }
-    localStorage.setItem('vanilla_rpg_users', JSON.stringify(users));
-    currentUser = username;
-    localStorage.setItem('vanilla_rpg_currentUser', currentUser);
-    loadPlayer();
-    closeAuthModal();
-    updateAuthButton();
-    addLog(`Ласкаво просимо, ${username}! Ваш персонаж готовий до пригод.`, 'clear');
-    updateUI();
-}
-
 
 function logout() {
     if (confirm('Вийти з акаунта? Не збережені дані гостя будуть втрачені.')) {
@@ -298,7 +207,7 @@ function logout() {
 }
 
 // ==========================================
-// 3. ЗМІННІ СТАНУ ГРИ
+// 4. ЗМІННІ СТАНУ ГРИ
 // ==========================================
 let currentMonster = null;
 let monsterHP = 0;
@@ -306,7 +215,7 @@ let selectedItemDetail = null;
 let playerBlocking = false;
 
 // ==========================================
-// 4. ІНТЕРФЕЙС
+// 5. ІНТЕРФЕЙС
 // ==========================================
 function updateUI() {
     document.getElementById('p-name').innerText = player.name;
@@ -373,11 +282,12 @@ function updateEquipmentSlots() {
 
 function addLog(message, type = "default") {
     const logBox = document.getElementById('log-box');
+    if (!logBox) return;
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     if (type === "clear" || type === true) entry.innerHTML = `<span class="chat-highlight">${message}</span>`;
     else if (type === "danger") entry.innerHTML = `<span class="chat-danger">${message}</span>`;
-    else entry.innerHTML = `<span class="chat-system">Доглядач:</span> ${message}`;
+    else entry.innerHTML = `<span class="chat-system">Система:</span> ${message}`;
     logBox.insertBefore(entry, logBox.firstChild);
     logBox.scrollTop = logBox.scrollHeight;
 }
@@ -401,7 +311,7 @@ function switchTab(tab) {
 }
 
 // ==========================================
-// 5. БОЙОВА СИСТЕМА
+// 6. БОЙОВА СИСТЕМА
 // ==========================================
 function searchMonster() {
     if (player.currentHP <= 0) { addLog("Ви надто слабкі, щоб битися.", "danger"); return; }
@@ -466,6 +376,7 @@ function updateBattleHP() {
 
 function addBattleLog(msg) {
     const log = document.getElementById('battle-log');
+    if (!log) return;
     const div = document.createElement('div');
     div.className = 'log-entry';
     div.textContent = msg;
@@ -483,14 +394,7 @@ function endBattle(victory) {
         player.xp += 15;
         if (player.xp >= 100) { player.level += 1; player.xp -= 100; addLog(`Вітаємо! Рівень ${player.level}!`, "clear"); }
         let dropMessage = "";
-        if (Math.random() < 0.001) {
-            const keys = Object.keys(REAL_PRODUCTS);
-            const randomKey = keys[Math.floor(Math.random() * keys.length)];
-            player.inventory.push({ type: 'license', id: randomKey, instanceId: Date.now().toString() + Math.random(), status: 'DROPPED' });
-            dropMessage = `✨ НЕЙМОВІРНО! Випала ліцензія на "${REAL_PRODUCTS[randomKey].name}"!`;
-            addBattleLog(dropMessage);
-            addLog(dropMessage, "clear");
-        } else if (Math.random() < 0.20) {
+        if (Math.random() < 0.20) {
             const template = EQUIPMENT_TEMPLATES[Math.floor(Math.random() * EQUIPMENT_TEMPLATES.length)];
             const newEquip = {
                 type: 'equip',
@@ -537,7 +441,6 @@ function fleeBattle() {
     updateUI();
 }
 
-// Скіли
 function skillPowerAttack() {
     if (!currentMonster) return;
     if (player.currentSP < 15) { addBattleLog("Недостатньо SP (потрібно 15)."); return; }
@@ -579,7 +482,6 @@ function skillBlock() {
     monsterAttack();
 }
 
-// Пасивне відновлення SP
 setInterval(() => {
     if (!currentMonster && player && player.currentSP < getStatsWithBonuses().maxSP) {
         player.currentSP = Math.min(player.currentSP + 1, getStatsWithBonuses().maxSP);
@@ -588,7 +490,7 @@ setInterval(() => {
 }, 10000);
 
 // ==========================================
-// 6. ЗАВДАННЯ
+// 7. ЗАВДАННЯ, МАГАЗИН, КОВАЛЬ
 // ==========================================
 function checkDailyReset() {
     if (!player.dailyQuests) player.dailyQuests = { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null };
@@ -632,9 +534,6 @@ function claimQuestReward(questId) {
     updateUI();
 }
 
-// ==========================================
-// 7. МАГАЗИН
-// ==========================================
 function renderShopIfActive() {
     if (document.getElementById('zone-shop') && !document.getElementById('zone-shop').classList.contains('hidden')) renderShop();
 }
@@ -674,9 +573,6 @@ function buyItem(itemId) {
     updateUI();
 }
 
-// ==========================================
-// 8. КОВАЛЬ
-// ==========================================
 function renderBlacksmith() {
     const container = document.getElementById('blacksmith-list');
     if (!container) return;
@@ -746,7 +642,7 @@ function upgradeItem(instanceId, source, slot, index) {
 }
 
 // ==========================================
-// 9. ІНВЕНТАР
+// 8. ІНВЕНТАР ТА ПРЕДМЕТИ
 // ==========================================
 function renderInventory() {
     const grid = document.getElementById('inventory-grid');
@@ -764,11 +660,6 @@ function renderInventory() {
             icon = item.icon || '?';
             name = item.name;
             cell.classList.add('equip');
-        } else if (item.type === 'license') {
-            const prod = REAL_PRODUCTS[item.id];
-            if (!prod) return;
-            icon = prod.name.charAt(0); name = prod.name;
-            cell.classList.add('license');
         } else if (item.type === 'consumable') {
             const cons = SHOP_ITEMS.find(c => c.id === item.id);
             if (!cons) return;
@@ -785,83 +676,43 @@ function showItemDetail(item) {
     selectedItemDetail = item.instanceId;
     const modal = document.getElementById('item-detail-modal');
     document.getElementById('detail-stats').innerHTML = '';
+    
     if (item.type === 'equip') {
         document.getElementById('detail-title').innerText = `${item.name} (Рівень ${item.upgradeLevel || 0})`;
         document.getElementById('detail-stats').innerHTML = `<p>🗡️ Атака: ${item.attack||0}</p><p>🛡️ Захист: ${item.defense||0}</p><p>❤️ HP: +${item.hp||0}</p><p>💧 MP: +${item.mp||0}</p><p>⚡ SP: +${item.sp||0}</p><p>💰 Ціна продажу: ${item.sellPrice || 15} золота</p>`;
         document.getElementById('detail-primary-btn').innerText = '⚔️ Екіпірувати';
         document.getElementById('detail-primary-btn').onclick = () => { equipItem(selectedItemDetail); closeItemDetail(); };
-    } else if (item.type === 'license') {
-        const lic = REAL_PRODUCTS[item.id];
-        document.getElementById('detail-title').innerText = lic.name;
-        document.getElementById('detail-stats').innerHTML = `<p>📦 Статус: ${item.status==='UNLOCKED'?'✅ Доступно':'🔒 Заблоковано'}</p><p>💰 Анлок: ${lic.goldCost} золота</p><p>💳 Реальна ціна: ${lic.realPrice} грн</p><p>💰 Продаж: ${Math.floor(lic.goldCost/2)} золота</p>`;
-        if (item.status === 'DROPPED') {
-            document.getElementById('detail-primary-btn').innerText = '🔓 Анлок';
-            document.getElementById('detail-primary-btn').onclick = () => { handleUnlock(selectedItemDetail, lic.goldCost); closeItemDetail(); };
-        } else {
-            document.getElementById('detail-primary-btn').innerText = '💳 Купити за грн';
-            document.getElementById('detail-primary-btn').onclick = () => { openModal(selectedItemDetail); closeItemDetail(); };
-        }
     } else if (item.type === 'consumable') {
         const cons = SHOP_ITEMS.find(c => c.id === item.id);
-        document.getElementById('detail-title').innerText = cons.name;
-        document.getElementById('detail-stats').innerHTML = `<p>${cons.description}</p><p>💰 Продаж: ${Math.floor(cons.price/2)} золота</p>`;
+        document.getElementById('detail-title').innerText = cons ? cons.name : item.id;
+        document.getElementById('detail-stats').innerHTML = `<p>${cons ? cons.description : ''}</p>`;
         document.getElementById('detail-primary-btn').innerText = '🧪 Використати';
         document.getElementById('detail-primary-btn').onclick = () => { useConsumable(selectedItemDetail); closeItemDetail(); };
     }
+
     document.getElementById('detail-sell-btn').onclick = () => { sellItem(selectedItemDetail); closeItemDetail(); };
     document.getElementById('detail-discard-btn').onclick = () => { discardItem(selectedItemDetail); closeItemDetail(); };
+
     modal.classList.remove('hidden');
 }
 
-function closeItemDetail() { document.getElementById('item-detail-modal').classList.add('hidden'); selectedItemDetail = null; }
-
-function useConsumable(instanceId) {
-    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
-    if (idx === -1) return;
-    const item = player.inventory[idx];
-    if (item.type !== 'consumable') return;
-    const cons = SHOP_ITEMS.find(c => c.id === item.id);
-    if (!cons) return;
-    const stats = getStatsWithBonuses();
-    if (cons.effect.hp) player.currentHP = Math.min(player.currentHP + cons.effect.hp, stats.maxHP);
-    if (cons.effect.mp) player.currentMP = Math.min(player.currentMP + cons.effect.mp, stats.maxMP);
-    if (cons.effect.sp) player.currentSP = Math.min(player.currentSP + cons.effect.sp, stats.maxSP);
-    player.inventory.splice(idx, 1);
-    addLog(`Використано ${cons.name}.`, "clear");
-    updateUI();
-}
-
-function sellItem(instanceId) {
-    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
-    if (idx === -1) return;
-    const item = player.inventory[idx];
-    let price = 0;
-    if (item.type === 'equip') price = item.sellPrice || 15;
-    else if (item.type === 'license') { const lic = REAL_PRODUCTS[item.id]; price = lic ? Math.floor(lic.goldCost/2) : 5; }
-    else if (item.type === 'consumable') { const cons = SHOP_ITEMS.find(c => c.id === item.id); price = cons ? Math.floor(cons.price/2) : 2; }
-    player.gold += price;
-    player.inventory.splice(idx, 1);
-    addLog(`Продано за ${price} золота.`, "clear");
-    updateUI();
-}
-
-function discardItem(instanceId) {
-    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
-    if (idx === -1) return;
-    player.inventory.splice(idx, 1);
-    addLog("Предмет викинуто.", "default");
-    updateUI();
+function closeItemDetail() {
+    document.getElementById('item-detail-modal').classList.add('hidden');
+    selectedItemDetail = null;
 }
 
 function equipItem(instanceId) {
-    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
-    if (idx === -1) return;
-    const item = player.inventory[idx];
-    if (item.type !== 'equip') return;
+    const index = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (index === -1) return;
+    const item = player.inventory[index];
     const slot = item.slot;
-    if (player.equipment[slot]) player.inventory.push(player.equipment[slot]);
+
+    if (player.equipment[slot]) {
+        player.inventory.push(player.equipment[slot]);
+    }
+
     player.equipment[slot] = item;
-    player.inventory.splice(idx, 1);
+    player.inventory.splice(index, 1);
     addLog(`Екіпіровано: ${item.name}`, "clear");
     updateUI();
 }
@@ -869,58 +720,61 @@ function equipItem(instanceId) {
 function unequipItem(slot) {
     const item = player.equipment[slot];
     if (!item) return;
-    player.inventory.push(item);
     player.equipment[slot] = null;
-    addLog(`Знято: ${item.name}`, "default");
+    player.inventory.push(item);
+    addLog(`Знято: ${item.name}`, "clear");
     updateUI();
 }
 
-function handleUnlock(instanceId, goldCost) {
-    if (player.gold < goldCost) { addLog("Недостатньо золота!", "danger"); return; }
-    player.gold -= goldCost;
-    const item = player.inventory.find(i => i.instanceId === instanceId);
-    if (item) { item.status = 'UNLOCKED'; addLog("Ліцензію розкодовано!", "clear"); }
+function useConsumable(instanceId) {
+    const index = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (index === -1) return;
+    const item = player.inventory[index];
+    const cons = SHOP_ITEMS.find(c => c.id === item.id);
+    if (!cons) return;
+
+    const stats = getStatsWithBonuses();
+    if (cons.effect.hp) player.currentHP = Math.min(player.currentHP + cons.effect.hp, stats.maxHP);
+    if (cons.effect.mp) player.currentMP = Math.min(player.currentMP + cons.effect.mp, stats.maxMP);
+    if (cons.effect.sp) player.currentSP = Math.min(player.currentSP + cons.effect.sp, stats.maxSP);
+
+    player.inventory.splice(index, 1);
+    addLog(`Використано: ${cons.name}`, "clear");
     updateUI();
 }
 
-// Модалка оплати
-let activeCheckoutInstanceId = null;
-function openModal(instanceId) {
-    activeCheckoutInstanceId = instanceId;
-    const item = player.inventory.find(i => i.instanceId === instanceId);
-    if (!item) return;
-    const prod = REAL_PRODUCTS[item.id];
-    document.getElementById('modal-item-name').innerText = `Товар: ${prod.name}`;
-    document.getElementById('modal-item-price').innerText = prod.realPrice;
-    document.getElementById('payment-modal').classList.remove('hidden');
+function sellItem(instanceId) {
+    const index = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (index === -1) return;
+    const item = player.inventory[index];
+    const price = item.sellPrice || 10;
+    player.gold += price;
+    player.inventory.splice(index, 1);
+    addLog(`Продано ${item.name} за ${price} золота.`, "clear");
+    updateUI();
 }
-function closeModal() { document.getElementById('payment-modal').classList.add('hidden'); activeCheckoutInstanceId = null; }
-function confirmPayment() {
-    const item = player.inventory.find(i => i.instanceId === activeCheckoutInstanceId);
-    if (!item) return;
-    player.inventory = player.inventory.filter(i => i.instanceId !== activeCheckoutInstanceId);
-    player.gold += 10;
-    addLog(`Оплата пройшла! Товар відправлено. Бонус: +10 золота.`, "clear");
-    closeModal();
+
+function discardItem(instanceId) {
+    const index = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (index === -1) return;
+    const item = player.inventory[index];
+    player.inventory.splice(index, 1);
+    addLog(`Викинуто: ${item.name}`, "danger");
     updateUI();
 }
 
 function resetGame() {
-    if(confirm("Скинути прогрес?")) {
-        player = {
-            name: currentUser || "Гість",
-            gold: 5, xp: 0, level: 1,
-            inventory: [],
-            equipment: { weapon: null, armor: null, helmet: null, accessory: null },
-            currentHP: 120, currentMP: 15, currentSP: 60,
-            dailyQuests: { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null }
-        };
-        addLog("Прогрес скинуто.", "danger");
+    if (confirm("Ви впевнені, що хочете скинути персонажа? Всі дані будуть втрачені.")) {
+        player = { ...guestPlayer, inventory: [], equipment: { weapon: null, armor: null, helmet: null, accessory: null } };
+        savePlayerData();
         updateUI();
+        addLog("Персонажа скинуто.", "danger");
     }
 }
 
-// Ініціалізація
-loadPlayer();
-updateAuthButton();
-updateUI();
+// Ініціалізація при завантаженні
+window.onload = () => {
+    loadPlayer();
+    updateAuthButton();
+    updateUI();
+};
