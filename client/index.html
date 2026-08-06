@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Витрибенька</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="top-nav-bar">
+        <div class="bars-container">
+            <div class="character-name">[X] <span id="p-name">Воїн</span> [<span id="p-level">1</span>]</div>
+            <div class="stat-bars">
+                <div class="bar hp-bar"><span id="val-hp">120/120</span></div>
+                <div class="bar mp-bar"><span id="val-mp">15/15</span></div>
+                <div class="bar sp-bar"><span id="val-sp">60/60</span></div>
+            </div>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-icon-btn active" id="btn-arena" onclick="switchTab('arena')">⚔️ Бій</button>
+            <button class="nav-icon-btn" id="btn-shop" onclick="switchTab('shop')">🏪 Магазин</button>
+            <button class="nav-icon-btn" id="btn-guild" onclick="switchTab('guild')">📦 Інвентар</button>
+            <button class="nav-icon-btn" id="btn-quests" onclick="switchTab('quests')">📋 Завдання</button>
+            <button class="nav-icon-btn" id="btn-blacksmith" onclick="switchTab('blacksmith')">🔨 Коваль</button>
+            <button class="nav-icon-btn" id="btn-settings" onclick="switchTab('settings')">⚙️ Опції</button>
+        </div>
+        <div class="economy-container">
+            <div class="econ-item">🧪 XP: <span id="p-xp">0</span>/100</div>
+            <div class="econ-item">💰 Золото: <span id="p-gold">0</span></div>
+            <button class="auth-btn" id="auth-button" onclick="openAuthModal()">Увійти / Зареєструватися</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- АРЕНА -->
+        <div id="zone-arena" class="arena-zone">
+            <div id="arena-idle">
+                <h3>Зона Полювання</h3>
+                <button class="search-btn" onclick="searchMonster()">🔍 Шукати Монстра</button>
+            </div>
+            <div id="arena-battle" class="hidden">
+                <div class="battle-scene">
+                    <div class="fighter player-side">
+                        <div class="fighter-sprite player-sprite"></div>
+                        <div class="fighter-name">[X] <span id="bf-p-name"></span> [<span id="bf-p-level"></span>]</div>
+                        <div class="hp-bar-container">
+                            <div class="bar hp-bar" style="width:100%;"><span id="bf-p-hp"></span></div>
+                        </div>
+                    </div>
+                    <div class="battle-log" id="battle-log"></div>
+                    <div class="fighter monster-side">
+                        <div class="fighter-sprite monster-sprite" id="monster-sprite"></div>
+                        <div class="fighter-name" id="bf-m-name"></div>
+                        <div class="hp-bar-container">
+                            <div class="bar hp-bar" style="width:100%;"><span id="bf-m-hp"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="battle-actions">
+                    <button class="action-btn attack-btn" onclick="attackMonster()">⚔️ Атакувати</button>
+                    <button class="action-btn flee-btn" onclick="fleeBattle()">🏃 Втекти</button>
+                </div>
+                <div class="battle-skills">
+                    <button class="skill-btn power-btn" onclick="skillPowerAttack()">⚡ Сильний удар (15 SP)</button>
+                    <button class="skill-btn heal-btn" onclick="skillHeal()">💚 Лікування (10 MP)</button>
+                    <button class="skill-btn block-btn" onclick="skillBlock()">🛡️ Блок (10 SP)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- МАГАЗИН -->
+        <div id="zone-shop" class="hidden">
+            <h3>🏪 Крамниця «Під лежачий камінь»</h3>
+            <div class="shop-grid" id="shop-grid"></div>
+        </div>
+
+        <!-- ІНВЕНТАР -->
+        <div id="zone-guild" class="hidden">
+            <h3>Ваш Інвентар та Екіпіровка (<span id="p-inv-count">0</span>)</h3>
+            <div class="character-panel">
+                <div class="side-panel skills-panel">
+                    <h4>Скіли</h4>
+                    <div class="placeholder-box">Тут будуть скіли</div>
+                </div>
+                <div class="character-center">
+                    <div class="character-silhouette">
+                        <div class="char-body"></div>
+                    </div>
+                    <div class="equipment-slots">
+                        <div class="equip-slot" data-slot="helmet" onclick="unequipItem('helmet')">⛑️</div>
+                        <div class="equip-slot" data-slot="armor" onclick="unequipItem('armor')">🛡️</div>
+                        <div class="equip-slot" data-slot="weapon" onclick="unequipItem('weapon')">⚔️</div>
+                        <div class="equip-slot" data-slot="accessory" onclick="unequipItem('accessory')">💍</div>
+                    </div>
+                </div>
+                <div class="side-panel stats-panel">
+                    <h4>Статистика</h4>
+                    <div class="placeholder-box" id="stats-box">Тут буде статистика</div>
+                </div>
+            </div>
+            <div class="inventory-grid" id="inventory-grid"></div>
+        </div>
+
+        <!-- ЗАВДАННЯ -->
+        <div id="zone-quests" class="hidden">
+            <h3>📋 Щоденні завдання</h3>
+            <div class="quests-container" id="quests-container"></div>
+        </div>
+
+        <!-- КОВАЛЬ -->
+        <div id="zone-blacksmith" class="hidden">
+            <h3>🔨 Коваль</h3>
+            <p>Покращуйте своє спорядження за золото. Максимальний рівень — 5.</p>
+            <div class="blacksmith-list" id="blacksmith-list"></div>
+        </div>
+
+        <!-- НАЛАШТУВАННЯ -->
+        <div id="zone-settings" class="hidden">
+            <h3>Налаштування Персонажа</h3>
+            <p>Тут можна скинути прогрес або налаштувати профіль.</p>
+            <button onclick="resetGame()" style="background: #ff0000; color: #fff; padding: 10px; cursor: pointer;">Скинути персонажа</button>
+        </div>
+    </div>
+
+    <!-- ЧАТ -->
+    <div class="bottom-chat-bar">
+        <div class="chat-main-area">
+            <div class="chat-messages" id="log-box"></div>
+            <div class="chat-sidebar">
+                <div class="chat-sector">Сектор (38:183)</div>
+                <div class="chat-channels">
+                    <button class="channel-btn active">Локація</button>
+                    <button class="channel-btn">Загальний</button>
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input-field" placeholder="Введіть повідомлення..." onkeydown="if(event.key === 'Enter') sendFakeChatMessage()">
+            <div class="chat-tools">
+                <button class="tool-btn" onclick="sendFakeChatMessage()">↑</button>
+                <button class="tool-btn" onclick="document.getElementById('log-box').innerHTML=''">X</button>
+                <button class="tool-btn">:)</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модалка оплати (ліцензії) -->
+    <div id="payment-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h3>💳 Оформлення замовлення</h3>
+            <p id="modal-item-name">Товар: </p>
+            <p>До сплати: <strong id="modal-item-price">0</strong> грн</p>
+            <input type="text" placeholder="#### #### #### ####" maxlength="19">
+            <div class="modal-actions">
+                <button onclick="confirmPayment()" class="pay-btn">Оплатити</button>
+                <button onclick="closeModal()" class="cancel-btn">Скасувати</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка деталей предмета -->
+    <div id="item-detail-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h3 id="detail-title">Назва предмета</h3>
+            <div id="detail-stats"></div>
+            <div class="modal-actions">
+                <button id="detail-primary-btn" class="pay-btn">Основна дія</button>
+                <button id="detail-sell-btn" class="action-btn" style="background:#d4af37; color:#000;">💰 Продати</button>
+                <button id="detail-discard-btn" class="cancel-btn">🗑️ Викинути</button>
+                <button onclick="closeItemDetail()" class="action-btn" style="background:#444; color:#fff;">Закрити</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка авторизації -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="auth-tabs">
+                <button id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Вхід</button>
+                <button id="tab-register" class="auth-tab" onclick="switchAuthTab('register')">Реєстрація</button>
+            </div>
+            <div id="auth-form-login" class="auth-form">
+                <input type="text" id="login-username" placeholder="Логін">
+                <input type="password" id="login-password" placeholder="Пароль">
+                <button onclick="login()" class="pay-btn">Увійти</button>
+            </div>
+            <div id="auth-form-register" class="auth-form hidden">
+                <input type="text" id="reg-username" placeholder="Придумайте логін">
+                <input type="password" id="reg-password" placeholder="Пароль">
+                <button onclick="register()" class="pay-btn">Зареєструватися</button>
+            </div>
+            <p id="auth-error" style="color: red; font-size: 12px;"></p>
+            <button onclick="closeAuthModal()" class="cancel-btn">Закрити</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
