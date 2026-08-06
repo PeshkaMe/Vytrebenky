@@ -33,6 +33,25 @@ function sendFakeChatMessage() {
 
     input.value = "";
 }
+
+// Відповідь про успішну авторизацію/реєстрацію
+socket.on('auth_success', (res) => {
+    currentUser = res.username;
+    localStorage.setItem('vanilla_rpg_currentUser', currentUser);
+    
+    player = res.data;
+    closeAuthModal();
+    updateAuthButton();
+    addLog(res.message, "clear");
+    updateUI();
+});
+
+// Помилка авторизації
+socket.on('auth_error', (errorMsg) => {
+    const errorElem = document.getElementById('auth-error');
+    if (errorElem) errorElem.textContent = errorMsg;
+});
+
 // ==========================================
 // 1. КОНСТАНТИ ТА БАЗОВІ ДАНІ ГРИ
 // ==========================================
@@ -218,23 +237,44 @@ function switchAuthTab(tab) {
 function register() {
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
-    if (!username || !password) { document.getElementById('auth-error').textContent = 'Заповніть всі поля'; return; }
-    if (users[username]) { document.getElementById('auth-error').textContent = 'Користувач з таким логіном вже існує'; return; }
-    users[username] = {
-        password: password,
-        data: {
-            name: username,
-            gold: 5,
-            xp: 0,
-            level: 1,
-            inventory: [],
-            equipment: { weapon: null, armor: null, helmet: null, accessory: null },
-            currentHP: 120,
-            currentMP: 15,
-            currentSP: 60,
-            dailyQuests: { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null }
-        }
+    if (!username || !password) { 
+        document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
+        return; 
+    }
+
+    const newPlayerData = {
+        name: username,
+        gold: 5,
+        xp: 0,
+        level: 1,
+        inventory: [],
+        equipment: { weapon: null, armor: null, helmet: null, accessory: null },
+        currentHP: 120,
+        currentMP: 15,
+        currentSP: 60,
+        dailyQuests: { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null }
     };
+
+    socket.emit('register', {
+        username: username,
+        password: password,
+        initialData: newPlayerData
+    });
+}
+
+function login() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+    if (!username || !password) { 
+        document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
+        return; 
+    }
+
+    socket.emit('login', {
+        username: username,
+        password: password
+    });
+}
     localStorage.setItem('vanilla_rpg_users', JSON.stringify(users));
     currentUser = username;
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
@@ -245,19 +285,6 @@ function register() {
     updateUI();
 }
 
-function login() {
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value.trim();
-    if (!username || !password) { document.getElementById('auth-error').textContent = 'Заповніть всі поля'; return; }
-    if (!users[username] || users[username].password !== password) { document.getElementById('auth-error').textContent = 'Невірний логін або пароль'; return; }
-    currentUser = username;
-    localStorage.setItem('vanilla_rpg_currentUser', currentUser);
-    loadPlayer();
-    closeAuthModal();
-    updateAuthButton();
-    addLog(`З поверненням, ${username}!`, 'clear');
-    updateUI();
-}
 
 function logout() {
     if (confirm('Вийти з акаунта? Не збережені дані гостя будуть втрачені.')) {
