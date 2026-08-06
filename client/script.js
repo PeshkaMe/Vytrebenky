@@ -1,4 +1,4 @@
-const socket = io('http://192.168.68.100:3000');
+const socket = io('https://vytrebenky.onrender.com'); // підстав своє посилання з Render
 
 // Підключаємося (автоматично визначить локальну адресу або хостинг)
 const socket = io();
