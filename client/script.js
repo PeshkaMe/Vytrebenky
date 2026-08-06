@@ -1,8 +1,5 @@
 const socket = io('https://vytrebenky.onrender.com'); // підстав своє посилання з Render
 
-// Підключаємося (автоматично визначить локальну адресу або хостинг)
-const socket = io();
-
 // Отримання повідомлень чату
 socket.on('chat_message', (data) => {
     addLog(`[${data.user}]: ${data.text}`, 'clear');
