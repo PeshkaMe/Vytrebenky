@@ -11,6 +11,8 @@ socket.on('chat_message', (data) => {
 socket.on('player_loaded', (savedPlayer) => {
     if (savedPlayer) {
         player = savedPlayer;
+        if (!player.theme) player.theme = 'original';
+        applyTheme(player.theme);
         if (typeof updateUI === 'function') updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
@@ -23,8 +25,9 @@ socket.on('auth_success', (res) => {
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
     
     player = res.data;
+    if (!player.theme) player.theme = 'original';
+    applyTheme(player.theme);
     closeAuthModal();
-    updateAuthButton();
     addLog(res.message, "clear");
     updateUI();
 });
@@ -95,6 +98,7 @@ let guestPlayer = {
     gold: 5,
     xp: 0,
     level: 1,
+    theme: "original",
     inventory: [],
     equipment: { weapon: null, armor: null, helmet: null, accessory: null },
     currentHP: 120,
@@ -105,17 +109,38 @@ let guestPlayer = {
 
 let player = guestPlayer;
 
+// ==========================================
+// ТЕМИ ОФОРМЛЕННЯ
+// ==========================================
+function changeTheme(themeName) {
+    player.theme = themeName;
+    localStorage.setItem('vanilla_rpg_theme', themeName);
+    applyTheme(themeName);
+    savePlayerData();
+}
+
+function applyTheme(themeName) {
+    const validTheme = ['original', 'light', 'dark'].includes(themeName) ? themeName : 'original';
+    document.body.className = `theme-${validTheme}`;
+    
+    const radioBtn = document.querySelector(`input[name="theme-choice"][value="${validTheme}"]`);
+    if (radioBtn) radioBtn.checked = true;
+}
+
 function loadPlayer() {
+    const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
+    applyTheme(localTheme);
+
     if (currentUser) {
         socket.emit('load_player', currentUser);
+        closeAuthModal();
     } else {
-        player = guestPlayer;
-        checkDailyReset();
+        openAuthModal();
     }
 }
 
 function savePlayerData() {
-    if (player && player.name) {
+    if (player && player.name && currentUser) {
         socket.emit('save_player', {
             name: player.name,
             data: player
@@ -123,26 +148,16 @@ function savePlayerData() {
     }
 }
 
-function updateAuthButton() {
-    const btn = document.getElementById('auth-button');
-    if (!btn) return;
-    if (currentUser) {
-        btn.textContent = currentUser;
-        btn.onclick = logout;
-    } else {
-        btn.textContent = 'Увійти / Зареєструватися';
-        btn.onclick = openAuthModal;
-    }
-}
-
 function openAuthModal() {
     document.getElementById('auth-modal').classList.remove('hidden');
+    document.getElementById('main-game-wrapper').classList.add('hidden');
     document.getElementById('auth-error').textContent = '';
     switchAuthTab('login');
 }
 
 function closeAuthModal() { 
     document.getElementById('auth-modal').classList.add('hidden'); 
+    document.getElementById('main-game-wrapper').classList.remove('hidden');
 }
 
 function switchAuthTab(tab) {
@@ -166,6 +181,7 @@ function register() {
         gold: 5,
         xp: 0,
         level: 1,
+        theme: player.theme || "original",
         inventory: [],
         equipment: { weapon: null, armor: null, helmet: null, accessory: null },
         currentHP: 120,
@@ -196,12 +212,11 @@ function login() {
 }
 
 function logout() {
-    if (confirm('Вийти з акаунта? Не збережені дані гостя будуть втрачені.')) {
+    if (confirm('Вийти з акаунта?')) {
         currentUser = null;
         localStorage.removeItem('vanilla_rpg_currentUser');
         player = guestPlayer;
-        updateAuthButton();
-        updateUI();
+        openAuthModal();
         addLog('Ви вийшли з акаунта.', 'default');
     }
 }
@@ -224,6 +239,8 @@ function updateUI() {
     document.getElementById('p-xp').innerText = player.xp;
     document.getElementById('p-inv-count').innerText = player.inventory.length;
     
+    applyTheme(player.theme || 'original');
+
     const stats = getStatsWithBonuses();
     document.getElementById('val-hp').innerText = `${player.currentHP}/${stats.maxHP}`;
     document.getElementById('val-mp').innerText = `${player.currentMP}/${stats.maxMP}`;
@@ -775,6 +792,5 @@ function resetGame() {
 // Ініціалізація при завантаженні
 window.onload = () => {
     loadPlayer();
-    updateAuthButton();
     updateUI();
 };
