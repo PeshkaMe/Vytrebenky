@@ -13,10 +13,10 @@ socket.on('player_loaded', (savedPlayer) => {
         player = savedPlayer;
         if (!player.theme) player.theme = 'original';
         applyTheme(player.theme);
-        if (typeof updateUI === 'function') updateUI();
+        updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
-        addLog("Створено нового персонажа.", "yellow");
+        addLog("Не вдалося завантажити дані персонажа.", "danger");
     }
 });
 
@@ -42,7 +42,7 @@ function sendFakeChatMessage() {
     const text = input.value.trim();
     if (!text) return;
 
-    const userName = (typeof player !== 'undefined' && player && player.name) ? player.name : 'Гість';
+    const userName = (player && player.name) ? player.name : 'Гравець';
 
     socket.emit('send_chat_message', {
         user: userName,
@@ -92,27 +92,10 @@ const DAILY_QUESTS = [
 // 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
+let player = null;
 
-let guestPlayer = {
-    name: "Гість",
-    gold: 5,
-    xp: 0,
-    level: 1,
-    theme: "original",
-    inventory: [],
-    equipment: { weapon: null, armor: null, helmet: null, accessory: null },
-    currentHP: 120,
-    currentMP: 15,
-    currentSP: 60,
-    dailyQuests: { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null }
-};
-
-let player = guestPlayer;
-
-// ==========================================
-// ТЕМИ ОФОРМЛЕННЯ
-// ==========================================
 function changeTheme(themeName) {
+    if (!player) return;
     player.theme = themeName;
     localStorage.setItem('vanilla_rpg_theme', themeName);
     applyTheme(themeName);
@@ -176,12 +159,14 @@ function register() {
         return; 
     }
 
+    const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
+
     const newPlayerData = {
         name: username,
         gold: 5,
         xp: 0,
         level: 1,
-        theme: player.theme || "original",
+        theme: localTheme,
         inventory: [],
         equipment: { weapon: null, armor: null, helmet: null, accessory: null },
         currentHP: 120,
@@ -214,8 +199,8 @@ function login() {
 function logout() {
     if (confirm('Вийти з акаунта?')) {
         currentUser = null;
+        player = null;
         localStorage.removeItem('vanilla_rpg_currentUser');
-        player = guestPlayer;
         openAuthModal();
         addLog('Ви вийшли з акаунта.', 'default');
     }
@@ -233,6 +218,8 @@ let playerBlocking = false;
 // 5. ІНТЕРФЕЙС
 // ==========================================
 function updateUI() {
+    if (!player) return;
+
     document.getElementById('p-name').innerText = player.name;
     document.getElementById('p-level').innerText = player.level;
     document.getElementById('p-gold').innerText = player.gold;
@@ -260,6 +247,7 @@ function updateUI() {
 }
 
 function getStatsWithBonuses() {
+    if (!player) return { maxHP: 0, maxMP: 0, maxSP: 0, attack: 0, defense: 0 };
     const baseHP = 120 + player.level * 20;
     const baseMP = 10 + player.level * 5;
     const baseSP = 60 + player.level * 10;
@@ -278,6 +266,7 @@ function getStatsWithBonuses() {
 }
 
 function updateEquipmentSlots() {
+    if (!player) return;
     const slots = document.querySelectorAll('.equip-slot');
     slots.forEach(slot => {
         const slotType = slot.dataset.slot;
@@ -331,6 +320,7 @@ function switchTab(tab) {
 // 6. БОЙОВА СИСТЕМА
 // ==========================================
 function searchMonster() {
+    if (!player) return;
     if (player.currentHP <= 0) { addLog("Ви надто слабкі, щоб битися.", "danger"); return; }
     if (player.currentSP < 10) { addLog("Недостатньо стаміни (потрібно 10).", "danger"); return; }
     player.currentSP -= 10;
@@ -357,7 +347,7 @@ function searchMonster() {
 }
 
 function attackMonster() {
-    if (!currentMonster) return;
+    if (!currentMonster || !player) return;
     const stats = getStatsWithBonuses();
     const minDmg = 5 + player.level + stats.attack;
     const maxDmg = 10 + player.level + stats.attack;
@@ -371,6 +361,7 @@ function attackMonster() {
 }
 
 function monsterAttack() {
+    if (!currentMonster || !player) return;
     const monster = currentMonster;
     let dmg = Math.floor(Math.random() * (monster.maxDmg - monster.minDmg + 1)) + monster.minDmg;
     if (playerBlocking) { dmg = Math.floor(dmg / 2); addBattleLog(`Ви заблокували частину шкоди!`); playerBlocking = false; }
@@ -382,6 +373,7 @@ function monsterAttack() {
 }
 
 function updateBattleHP() {
+    if (!player || !currentMonster) return;
     const stats = getStatsWithBonuses();
     document.getElementById('bf-p-hp').innerText = `${player.currentHP}/${stats.maxHP}`;
     const playerBar = document.querySelector('.player-side .hp-bar');
@@ -402,6 +394,7 @@ function addBattleLog(msg) {
 }
 
 function endBattle(victory) {
+    if (!player) return;
     playerBlocking = false;
     if (victory) {
         player.dailyQuests.kills = (player.dailyQuests.kills || 0) + 1;
@@ -459,7 +452,7 @@ function fleeBattle() {
 }
 
 function skillPowerAttack() {
-    if (!currentMonster) return;
+    if (!currentMonster || !player) return;
     if (player.currentSP < 15) { addBattleLog("Недостатньо SP (потрібно 15)."); return; }
     player.currentSP -= 15;
     player.dailyQuests.skillsUsed = (player.dailyQuests.skillsUsed || 0) + 1;
@@ -477,7 +470,7 @@ function skillPowerAttack() {
 }
 
 function skillHeal() {
-    if (!currentMonster) return;
+    if (!currentMonster || !player) return;
     if (player.currentMP < 10) { addBattleLog("Недостатньо MP (потрібно 10)."); return; }
     player.currentMP -= 10;
     player.dailyQuests.skillsUsed = (player.dailyQuests.skillsUsed || 0) + 1;
@@ -490,7 +483,7 @@ function skillHeal() {
 }
 
 function skillBlock() {
-    if (!currentMonster) return;
+    if (!currentMonster || !player) return;
     if (player.currentSP < 10) { addBattleLog("Недостатньо SP (потрібно 10)."); return; }
     player.currentSP -= 10;
     player.dailyQuests.skillsUsed = (player.dailyQuests.skillsUsed || 0) + 1;
@@ -510,6 +503,7 @@ setInterval(() => {
 // 7. ЗАВДАННЯ, МАГАЗИН, КОВАЛЬ
 // ==========================================
 function checkDailyReset() {
+    if (!player) return;
     if (!player.dailyQuests) player.dailyQuests = { kills: 0, purchases: 0, skillsUsed: 0, lastReset: null };
     const today = new Date().toDateString();
     if (player.dailyQuests.lastReset !== today) {
@@ -521,6 +515,7 @@ function checkDailyReset() {
 }
 
 function renderQuests() {
+    if (!player) return;
     checkDailyReset();
     const container = document.getElementById('quests-container');
     if (!container) return;
@@ -542,6 +537,7 @@ function renderQuests() {
 }
 
 function claimQuestReward(questId) {
+    if (!player) return;
     const quest = DAILY_QUESTS.find(q => q.id === questId);
     if (!quest) return;
     if ((player.dailyQuests[questId] || 0) < quest.goal) return;
@@ -579,6 +575,7 @@ function renderShop() {
 }
 
 function buyItem(itemId) {
+    if (!player) return;
     const shopItem = SHOP_ITEMS.find(i => i.id === itemId);
     if (!shopItem) return;
     if (player.gold < shopItem.price) { addLog("Недостатньо золота!", "danger"); return; }
@@ -591,6 +588,7 @@ function buyItem(itemId) {
 }
 
 function renderBlacksmith() {
+    if (!player) return;
     const container = document.getElementById('blacksmith-list');
     if (!container) return;
     container.innerHTML = '';
@@ -632,6 +630,7 @@ function renderBlacksmith() {
 }
 
 function upgradeItem(instanceId, source, slot, index) {
+    if (!player) return;
     let item = null;
     if (source === 'equipped') {
         item = player.equipment[slot];
@@ -662,6 +661,7 @@ function upgradeItem(instanceId, source, slot, index) {
 // 8. ІНВЕНТАР ТА ПРЕДМЕТИ
 // ==========================================
 function renderInventory() {
+    if (!player) return;
     const grid = document.getElementById('inventory-grid');
     if (!grid) return;
     grid.innerHTML = '';
@@ -719,6 +719,7 @@ function closeItemDetail() {
 }
 
 function equipItem(instanceId) {
+    if (!player) return;
     const index = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (index === -1) return;
     const item = player.inventory[index];
@@ -735,6 +736,7 @@ function equipItem(instanceId) {
 }
 
 function unequipItem(slot) {
+    if (!player) return;
     const item = player.equipment[slot];
     if (!item) return;
     player.equipment[slot] = null;
@@ -744,6 +746,7 @@ function unequipItem(slot) {
 }
 
 function useConsumable(instanceId) {
+    if (!player) return;
     const index = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (index === -1) return;
     const item = player.inventory[index];
@@ -761,6 +764,7 @@ function useConsumable(instanceId) {
 }
 
 function sellItem(instanceId) {
+    if (!player) return;
     const index = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (index === -1) return;
     const item = player.inventory[index];
@@ -772,6 +776,7 @@ function sellItem(instanceId) {
 }
 
 function discardItem(instanceId) {
+    if (!player) return;
     const index = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (index === -1) return;
     const item = player.inventory[index];
@@ -781,8 +786,16 @@ function discardItem(instanceId) {
 }
 
 function resetGame() {
+    if (!player) return;
     if (confirm("Ви впевнені, що хочете скинути персонажа? Всі дані будуть втрачені.")) {
-        player = { ...guestPlayer, inventory: [], equipment: { weapon: null, armor: null, helmet: null, accessory: null } };
+        player.gold = 5;
+        player.xp = 0;
+        player.level = 1;
+        player.inventory = [];
+        player.equipment = { weapon: null, armor: null, helmet: null, accessory: null };
+        player.currentHP = 120;
+        player.currentMP = 15;
+        player.currentSP = 60;
         savePlayerData();
         updateUI();
         addLog("Персонажа скинуто.", "danger");
@@ -792,5 +805,4 @@ function resetGame() {
 // Ініціалізація при завантаженні
 window.onload = () => {
     loadPlayer();
-    updateUI();
 };
