@@ -23,6 +23,19 @@
             <div id="auth-form-register" class="auth-form hidden">
                 <input type="text" id="reg-username" placeholder="Придумайте логін">
                 <input type="password" id="reg-password" placeholder="Пароль">
+                
+                <!-- Вибір класу -->
+                <select id="reg-class" onchange="updateSubclassDropdown()" style="padding: 8px; margin-bottom: 8px;">
+                    <option value="warrior">Воїн</option>
+                    <option value="mage">Маг</option>
+                    <option value="ranger">Ренджер</option>
+                </select>
+            
+                <!-- Вибір підкласу -->
+                <select id="reg-subclass" style="padding: 8px; margin-bottom: 12px;">
+                    <!-- Заповнюється динамічно -->
+                </select>
+            
                 <button onclick="register()" class="pay-btn">Зареєструватися</button>
             </div>
             <p id="auth-error" style="color: red; font-size: 12px; margin-top: 10px;"></p>
