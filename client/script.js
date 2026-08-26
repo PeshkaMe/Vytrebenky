@@ -60,63 +60,221 @@ const REAL_PRODUCTS = {
     "coffee_01": { name: "☕ Епічна Кава", goldCost: 30, realPrice: 60 }
 };
 
-const EQUIPMENT_TEMPLATES = [
-    { id: "sword_01", name: "🗡️ Іржавий меч", slot: "weapon", attack: 5, hp: 10, mp: 0, sp: 0, icon: "🗡️", sellPrice: 15 },
-    { id: "armor_01", name: "🛡️ Шкіряна броня", slot: "armor", defense: 4, hp: 15, mp: 0, sp: 0, icon: "🛡️", sellPrice: 15 },
-    { id: "helmet_01", name: "⛑️ Капюшон новачка", slot: "helmet", defense: 2, hp: 5, mp: 0, sp: 0, icon: "⛑️", sellPrice: 15 },
-    { id: "ring_01",  name: "💍 Кільце удачі", slot: "accessory", attack: 2, sp: 20, hp: 0, mp: 0, icon: "💍", sellPrice: 15 }
-];
-
+// Броня
 const ARMOR_DATABASE = {
-    // ВОЇН -> ТАНК (HP + Defense)
-    tank_a1: { id: 'tank_a1', name: "Важкий щитовий панцир", icon: "🛡️", reqClass: "warrior", reqSubclass: "tank", reqLevel: 1, price: 120, hp: 60, mp: 0, sp: 0, def: 5, atk: 0, crit: 0 },
-    tank_a2: { id: 'tank_a2', name: "Бастіонна кіраса", icon: "🥋", reqClass: "warrior", reqSubclass: "tank", reqLevel: 10, price: 1200, hp: 300, mp: 0, sp: 0, def: 22, atk: 0, crit: 0 },
-
-    // ВОЇН -> ДД/БЕРСЕРК (HP + Attack + Crit)
-    dd_a1: { id: 'dd_a1', name: "Шкури шаленого вовка", icon: "🐺", reqClass: "warrior", reqSubclass: "dd", reqLevel: 1, price: 120, hp: 35, mp: 0, sp: 0, def: 2, atk: 4, crit: 0.04 },
-    dd_a2: { id: 'dd_a2', name: "Обладунок Кривавого Женця", icon: "🩸", reqClass: "warrior", reqSubclass: "dd", reqLevel: 10, price: 1200, hp: 180, mp: 0, sp: 0, def: 10, atk: 18, crit: 0.10 },
-
-    // МАГ -> ВОГОНЬ (Pure Attack)
-    fire_a1: { id: 'fire_a1', name: "Мантія Вогняного Спустошення", icon: "🔥", reqClass: "mage", reqSubclass: "fire", reqLevel: 1, price: 120, hp: 10, mp: 35, sp: 0, def: 1, atk: 6, crit: 0.02 },
-    fire_a2: { id: 'fire_a2', name: "Ошатість Багряного Полум'я", icon: "🌋", reqClass: "mage", reqSubclass: "fire", reqLevel: 10, price: 1200, hp: 50, mp: 180, sp: 0, def: 3, atk: 28, crit: 0.08 },
-
-    // МАГ -> ВОДА (HP + MP + Def)
-    water_a1: { id: 'water_a1', name: "Роб Океанського Спокою", icon: "🌊", reqClass: "mage", reqSubclass: "water", reqLevel: 1, price: 120, hp: 25, mp: 40, sp: 0, def: 3, atk: 2, crit: 0 },
-    water_a2: { id: 'water_a2', name: "Мантія Глибоководного Припливу", icon: "🥻", reqClass: "mage", reqSubclass: "water", reqLevel: 10, price: 1200, hp: 120, mp: 220, sp: 0, def: 12, atk: 12, crit: 0 },
-
-    // МАГ -> ЕЛЕКТРИКА (Crit + Attack)
-    light_a1: { id: 'light_a1', name: "Плащ Грозового Розряду", icon: "⚡", reqClass: "mage", reqSubclass: "lightning", reqLevel: 1, price: 120, hp: 10, mp: 30, sp: 0, def: 1, atk: 4, crit: 0.06 },
-    light_a2: { id: 'light_a2', name: "Шати Володаря Блискавок", icon: "🌩️", reqClass: "mage", reqSubclass: "lightning", reqLevel: 10, price: 1200, hp: 40, mp: 160, sp: 0, def: 4, atk: 20, crit: 0.15 },
-
-    // РЕНДЖЕР -> АСАСІН (Crit + SP + Attack)
-    sin_a1: { id: 'sin_a1', name: "Обладунок Нічного Кроку", icon: "🥷", reqClass: "ranger", reqSubclass: "assassin", reqLevel: 1, price: 120, hp: 15, mp: 0, sp: 25, def: 1, atk: 3, crit: 0.08 },
-    sin_a2: { id: 'sin_a2', name: "Костюм Тіньового Вбивці", icon: "👤", reqClass: "ranger", reqSubclass: "assassin", reqLevel: 10, price: 1200, hp: 70, mp: 0, sp: 120, def: 5, atk: 15, crit: 0.20 },
-
-    // РЕНДЖЕР -> ЛУЧНИК (SP + Attack)
-    arch_a1: { id: 'arch_a1', name: "Легка куртка Слідопита", icon: "🧥", reqClass: "ranger", reqSubclass: "archer", reqLevel: 1, price: 120, hp: 20, mp: 0, sp: 20, def: 2, atk: 4, crit: 0.03 },
-    arch_a2: { id: 'arch_a2', name: "Обладунок Окуня Орла", icon: "🦅", reqClass: "ranger", reqSubclass: "archer", reqLevel: 10, price: 1200, hp: 90, mp: 0, sp: 100, def: 8, atk: 22, crit: 0.08 }
+    warrior: {
+        tank: [
+            { id: 'plate_basic', name: "🛡️ Залізна латова броня", def: 8, hpBonus: 20, rarity: "common" },
+            { id: 'plate_heavy', name: "🏰 Обладунок Непорушності", def: 16, hpBonus: 50, rarity: "rare" }
+        ],
+        dd: [
+            { id: 'scale_basic', name: "⚔️ Лускатий обладунок", def: 5, spBonus: 10, rarity: "common" },
+            { id: 'berserk_mail', name: "🔥 Кольчуга Берсерка", def: 10, hpBonus: 20, spBonus: 20, rarity: "rare" }
+        ]
+    },
+    mage: {
+        fire: [{ id: 'robe_fire', name: "🔥 Мантія Багряного Полум'я", def: 3, mpBonus: 35, rarity: "common" }],
+        water: [{ id: 'robe_water', name: "🌊 Освячений Океанський Одяг", def: 5, hpBonus: 25, mpBonus: 20, rarity: "common" }],
+        lightning: [{ id: 'robe_light', name: "⚡ Одежа Грозового Медіума", def: 3, mpBonus: 40, rarity: "common" }],
+        earth: [{ id: 'robe_earth', name: "🪨 Обруб Кам'яного Моноліта", def: 8, hpBonus: 30, mpBonus: 15, rarity: "common" }],
+        air: [{ id: 'robe_air', name: "💨 Обладунок Легкого Вітру", def: 4, mpBonus: 25, spBonus: 15, rarity: "common" }]
+    },
+    ranger: {
+        assassin: [
+            { id: 'leather_shadow', name: "🗡️ Тіньова Шкіряна Броня", def: 5, spBonus: 25, rarity: "common" },
+            { id: 'night_suit', name: "👤 Костюм Нічного Убивці", def: 9, spBonus: 40, rarity: "rare" }
+        ],
+        archer: [
+            { id: 'scout_mail', name: "🏹 Обладунок Лісового Слідопита", def: 6, spBonus: 20, rarity: "common" },
+            { id: 'windrunner_gear', name: "🎯 Броня Вітрокрила", def: 11, hpBonus: 15, spBonus: 25, rarity: "rare" }
+        ]
+    }
 };
 
-function canEquip(player, item) {
-    if (player.level < item.reqLevel) return false;
-    if (item.reqClass !== "any" && player.class !== item.reqClass) return false;
-    if (item.reqSubclass && player.subclass !== item.reqSubclass) return false; // Перевірка підкласу!
-    return true;
+// Зброя
+const WEAPON_DATABASE = {
+    warrior: {
+        tank: [
+            { id: "w_t_sword", name: "Важкий меч вартівника", icon: "🗡️", stats: { str: 4, def: 3 } },
+            { id: "w_t_mace", name: "Обух непохитності", icon: "🔨", stats: { def: 6, hp: 20 } }
+        ],
+        dd: [
+            { id: "w_d_axe", name: "Дворучна сокира", icon: "🪓", stats: { str: 6, crit: 5 } },
+            { id: "w_d_greatsword", name: "Великий меч Берсерка", icon: "⚔️", stats: { str: 8, crit: 8 } }
+        ]
+    },
+    ranger: {
+        assassin: [
+            { id: "r_a_dagger1", name: "Кривавий кинджал", icon: "🗡️", stats: { agi: 5, crit: 7 } },
+            { id: "r_a_dagger2", name: "Отруєний стилет", icon: "🗡️", stats: { agi: 6, crit: 10 } }
+        ],
+        archer: [
+            { id: "r_ar_bow1", name: "Композитний лук", icon: "🏹", stats: { agi: 5, str: 2 } },
+            { id: "r_ar_bow2", name: "Дрімучий довгий лук", icon: "🏹", stats: { agi: 7, crit: 5 } }
+        ]
+    },
+    mage: {
+        fire: [
+            { id: "m_f_staff", name: "Попелястий посох", icon: "🦯", stats: { int: 6 } }
+        ],
+        water: [
+            { id: "m_w_staff", name: "Жело Океану", icon: "🦯", stats: { int: 5, hp: 15 } }
+        ],
+        lightning: [
+            { id: "m_l_orb", name: "Сфера громовиці", icon: "🔮", stats: { int: 5, crit: 4 } }
+        ]
+    }
+};
+
+// Шоломи / Шапки
+const HELMET_DATABASE = {
+    warrior: {
+        tank: [
+            { id: "h_w_t_1", name: "Важкий латний шолом", icon: "🪖", stats: { def: 5, hp: 25 } }
+        ],
+        dd: [
+            { id: "h_w_d_1", name: "Шолом гладіатора", icon: "🪖", stats: { str: 3, crit: 3 } }
+        ]
+    },
+    ranger: {
+        assassin: [
+            { id: "h_r_a_1", name: "Маска нічного мисливця", icon: "🎭", stats: { agi: 4, crit: 3 } }
+        ],
+        archer: [
+            { id: "h_r_ar_1", name: "Капюшон слідопита", icon: "🥷", stats: { agi: 3, hp: 10 } }
+        ]
+    },
+    mage: {
+        fire: [
+            { id: "h_m_f_1", name: "Капелюх полум'я", icon: "🧙‍♂️", stats: { int: 4 } }
+        ],
+        water: [
+            { id: "h_m_w_1", name: "Водяна корона", icon: "👑", stats: { int: 3, def: 2 } }
+        ],
+        lightning: [
+            { id: "h_m_l_1", name: "Аура шторму", icon: "⚡", stats: { int: 4, crit: 2 } }
+        ]
+    }
+};
+
+// Кільця (Універсальні)
+const RING_DATABASE = [
+    { id: "ring_str", name: "Перстень могутності", icon: "💍", stats: { str: 3 } },
+    { id: "ring_int", name: "Перстень розуму", icon: "💍", stats: { int: 3 } },
+    { id: "ring_agi", name: "Перстень спритності", icon: "💍", stats: { agi: 3 } },
+    { id: "ring_hp", name: "Перстень життя", icon: "💍", stats: { hp: 30 } },
+    { id: "ring_crit", name: "Кільце точного удару", icon: "💍", stats: { crit: 4 } }
+];
+
+// Універсальна функція рандомного луту
+function getRandomLootDrop(playerClass, playerSubclass) {
+    const types = ['armor', 'weapon', 'helmet', 'ring'];
+    const selectedType = types[Math.floor(Math.random() * types.length)];
+
+    let pool = [];
+
+    if (selectedType === 'ring') {
+        pool = RING_DATABASE;
+    } else {
+        const dbMap = {
+            armor: ARMOR_DATABASE,
+            weapon: WEAPON_DATABASE,
+            helmet: HELMET_DATABASE
+        };
+        pool = dbMap[selectedType]?.[playerClass]?.[playerSubclass] || [];
+    }
+
+    if (pool.length === 0) return null;
+
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const selectedItem = pool[randomIndex];
+
+    return { 
+        ...selectedItem, 
+        slotType: selectedType, 
+        type: 'equip' 
+    };
 }
 
-const WEAPON_DATABASE = {
-    // Воїн
-    tank_w1: { id: 'tank_w1', name: "Геральдичний меч і щит", icon: "🛡️⚔️", reqClass: "warrior", reqSubclass: "tank", reqLevel: 1, price: 150, atk: 6, crit: 0, hp: 25, mp: 0, sp: 0, def: 3 },
-    dd_w1:   { id: 'dd_w1',   name: "Окровавлена Сокира", icon: "🪓", reqClass: "warrior", reqSubclass: "dd", reqLevel: 1, price: 150, atk: 12, crit: 0.05, hp: 0, mp: 0, sp: 0, def: 0 },
-
-    // Маг
-    fire_w1:  { id: 'fire_w1',  name: "Посох Палаючого Вугілля", icon: "🧹🔥", reqClass: "mage", reqSubclass: "fire", reqLevel: 1, price: 150, atk: 14, crit: 0.03, hp: 0, mp: 15, sp: 0, def: 0 },
-    water_w1: { id: 'water_w1', name: "Кристальна Крижана Палиця", icon: "🧊", reqClass: "mage", reqSubclass: "water", reqLevel: 1, price: 150, atk: 8, crit: 0, hp: 15, mp: 30, sp: 0, def: 2 },
-    light_w1: { id: 'light_w1', name: "Іскровий Жезл", icon: "🪄⚡", reqClass: "mage", reqSubclass: "lightning", reqLevel: 1, price: 150, atk: 10, crit: 0.10, hp: 0, mp: 20, sp: 0, def: 0 },
-
-    // Ренджер
-    sin_w1:  { id: 'sin_w1',  name: "Парні Отруєні Клички", icon: "🗡️🧪", reqClass: "ranger", reqSubclass: "assassin", reqLevel: 1, price: 150, atk: 9, crit: 0.10, hp: 0, mp: 0, sp: 15, def: 0 },
-    arch_w1: { id: 'arch_w1', name: "Важкий Довгий Лук", icon: "🏹", reqClass: "ranger", reqSubclass: "archer", reqLevel: 1, price: 150, atk: 11, crit: 0.04, hp: 0, mp: 0, sp: 20, def: 0 }
+const CLASSES_CONFIG = {
+    warrior: {
+        name: "Воїн",
+        subclasses: {
+            tank: {
+                name: "Танк",
+                desc: "Високий запас HP та броня",
+                bonuses: { hp: 50, defense: 5, attack: 0, critChance: 0 },
+                skills: [
+                    { id: 'shield_bash', name: "🛡️ Удар щитом", spCost: 10, mpCost: 0, desc: "Шкода + засліплення/блокування" },
+                    { id: 'taunt', name: "🧱 Захисна стійка", spCost: 15, mpCost: 0, desc: "Збільшує захист на декілька ходів" }
+                ]
+            },
+            dd: {
+                name: "ДД (Берсерк)",
+                desc: "Великий урон та високий шанс критичного удару",
+                bonuses: { hp: 0, defense: 0, attack: 8, critChance: 0.20 },
+                skills: [
+                    { id: 'heavy_slash', name: "⚔️ Важкий розруб", spCost: 15, mpCost: 0, desc: "Потрійна шкода" },
+                    { id: 'frenzy', name: "🔥 Лють", spCost: 20, mpCost: 0, desc: "Збільшує урон на наступний ход" }
+                ]
+            }
+        }
+    },
+    mage: {
+        name: "Маг",
+        subclasses: {
+            fire: {
+                name: "Маг Вогню",
+                desc: "Величезний урон по площі та горіння",
+                bonuses: { mp: 30, attack: 6, critChance: 0.10 },
+                skills: [
+                    { id: 'fireball', name: "🔥 Вогняна куля", spCost: 0, mpCost: 12, desc: "Сильний магічний урон" },
+                    { id: 'burn', name: "🌋 Підпал", spCost: 0, mpCost: 15, desc: "Періодичний урон" }
+                ]
+            },
+            water: {
+                name: "Маг Води",
+                desc: "Самолікування та контроль",
+                bonuses: { mp: 40, hp: 20, defense: 2 },
+                skills: [
+                    { id: 'heal_wave', name: "🌊 Хвиля зцілення", spCost: 0, mpCost: 10, desc: "Відновлює 40 HP" },
+                    { id: 'ice_shield', name: "🧊 Крижана броня", spCost: 0, mpCost: 12, desc: "Дає +10 до захисту" }
+                ]
+            },
+            lightning: {
+                name: "Маг Електрики",
+                desc: "Критичні розряди та висока швидкість",
+                bonuses: { mp: 25, attack: 4, critChance: 0.25 },
+                skills: [
+                    { id: 'lightning_bolt', name: "⚡ Блискавка", spCost: 0, mpCost: 10, desc: "Швидка шкода з високим крітом" },
+                    { id: 'chain_light', name: "🌩️ Ланцюгова блискавка", spCost: 0, mpCost: 18, desc: "Масований розряд" }
+                ]
+            }
+        }
+    },
+    ranger: {
+        name: "Ренджер",
+        subclasses: {
+            assassin: {
+                name: "Асасін (2 кинджали)",
+                desc: "Швидкі подвійні удари та критична шкода",
+                bonuses: { sp: 30, attack: 5, critChance: 0.30 },
+                skills: [
+                    { id: 'double_stab', name: "🗡️🗡️ Подвійний укол", spCost: 12, mpCost: 0, desc: "2 швидкі атаки" },
+                    { id: 'poison_blade', name: "🧪 Отруєне лезо", spCost: 15, mpCost: 0, desc: "Шкода + отрута" }
+                ]
+            },
+            archer: {
+                name: "Лучник",
+                desc: "Далекий бій, точність та виснаження",
+                bonuses: { sp: 20, attack: 7, critChance: 0.15 },
+                skills: [
+                    { id: 'aimed_shot', name: "🎯 Прицільний постріл", spCost: 10, mpCost: 0, desc: "Ігнорує броню" },
+                    { id: 'arrow_rain', name: "🏹 Град стріл", spCost: 20, mpCost: 0, desc: "Потрійний постріл" }
+                ]
+            }
+        }
+    }
 };
 
 const MONSTERS = [
@@ -201,6 +359,21 @@ function switchAuthTab(tab) {
     document.getElementById('auth-form-login').classList.toggle('hidden', tab !== 'login');
     document.getElementById('auth-form-register').classList.toggle('hidden', tab !== 'register');
     document.getElementById('auth-error').textContent = '';
+}
+
+function updateSubclassDropdown() {
+    const classVal = document.getElementById('reg-class').value;
+    const subSelect = document.getElementById('reg-subclass');
+    if (!subSelect) return;
+    subSelect.innerHTML = '';
+
+    const subClasses = CLASSES_CONFIG[classVal].subclasses;
+    for (let key in subClasses) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = `${subClasses[key].name} (${subClasses[key].desc})`;
+        subSelect.appendChild(opt);
+    }
 }
 
 function register() {
@@ -298,6 +471,7 @@ function updateUI() {
     renderShopIfActive();
     renderQuestsIfActive();
     renderBlacksmithIfActive();
+    renderBattleSkills();
 }
 
 function getStatsWithBonuses() {
@@ -307,11 +481,13 @@ function getStatsWithBonuses() {
     let baseMP = 10 + player.level * 5;
     let baseSP = 60 + player.level * 10;
     
-    let bonusHP = 0, bonusMP = 0, bonusSP = 0, attack = 0, defense = 0, critChance = 0.05; // базовий кріт 5%
+    let bonusHP = 0, bonusMP = 0, bonusSP = 0, attack = 0, defense = 0, critChance = 0.05;
 
-    // 1. Бонуси від класу/підкласу
-    if (player.heroClass && player.subClass && CLASSES_CONFIG[player.heroClass]) {
-        const subData = CLASSES_CONFIG[player.heroClass].subclasses[player.subClass];
+    const heroClass = player.heroClass || player.class;
+    const subClass = player.subClass || player.subclass;
+
+    if (heroClass && subClass && CLASSES_CONFIG[heroClass]) {
+        const subData = CLASSES_CONFIG[heroClass].subclasses[subClass];
         if (subData && subData.bonuses) {
             bonusHP += subData.bonuses.hp || 0;
             bonusMP += subData.bonuses.mp || 0;
@@ -322,7 +498,6 @@ function getStatsWithBonuses() {
         }
     }
 
-    // 2. Бонуси від предметів
     for (let slot in player.equipment) {
         const item = player.equipment[slot];
         if (item) {
@@ -422,6 +597,7 @@ function searchMonster() {
     document.getElementById('bf-m-hp').innerText = `${monsterHP}/${monster.hp}`;
     document.getElementById('battle-log').innerHTML = '';
     addBattleLog(`Ви натрапили на ${monster.name}! (витрачено 10 SP)`);
+    renderBattleSkills();
     updateBattleHP();
 }
 
@@ -433,10 +609,9 @@ function attackMonster() {
     const maxDmg = 10 + player.level + stats.attack;
     let playerDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
 
-    // Перевірка на критичний удар
     const isCrit = Math.random() < stats.critChance;
     if (isCrit) {
-        playerDmg = Math.floor(playerDmg * 1.8); // +80% шкоди при кріті
+        playerDmg = Math.floor(playerDmg * 1.8);
         addBattleLog(`💥 КРИТИЧНИЙ УДАР! Ви завдали ${playerDmg} шкоди!`);
     } else {
         addBattleLog(`Ви завдали ${playerDmg} шкоди ${currentMonster.name}.`);
@@ -493,29 +668,47 @@ function endBattle(victory) {
         player.gold += goldGained;
         player.xp += 15;
         if (player.xp >= 100) { player.level += 1; player.xp -= 100; addLog(`Вітаємо! Рівень ${player.level}!`, "clear"); }
+        
         let dropMessage = "";
-        if (Math.random() < 0.20) {
-            const template = EQUIPMENT_TEMPLATES[Math.floor(Math.random() * EQUIPMENT_TEMPLATES.length)];
-            const newEquip = {
-                type: 'equip',
-                id: template.id,
-                instanceId: Date.now().toString() + Math.random(),
-                status: 'DROPPED',
-                attack: template.attack,
-                defense: template.defense,
-                hp: template.hp,
-                mp: template.mp,
-                sp: template.sp,
-                icon: template.icon,
-                name: template.name,
-                slot: template.slot,
-                sellPrice: template.sellPrice,
-                upgradeLevel: 0
-            };
-            player.inventory.push(newEquip);
-            dropMessage = `🎒 Ви знайшли предмет: ${template.name}!`;
-            addBattleLog(dropMessage);
-            addLog(dropMessage, "clear");
+        
+        // Шанс випадіння луту (25%)
+        if (Math.random() <= 0.25) {
+            const heroClass = player.heroClass || player.class;
+            const subClass = player.subClass || player.subclass;
+            const droppedItem = getRandomLootDrop(heroClass, subClass);
+
+            if (droppedItem) {
+                const slotMap = {
+                    armor: 'armor',
+                    weapon: 'weapon',
+                    helmet: 'helmet',
+                    ring: 'accessory'
+                };
+
+                const stats = droppedItem.stats || {};
+
+                const newEquip = {
+                    type: 'equip',
+                    id: droppedItem.id,
+                    instanceId: Date.now().toString() + Math.random(),
+                    status: 'DROPPED',
+                    attack: stats.str || stats.attack || 0,
+                    defense: droppedItem.def || stats.def || stats.defense || 0,
+                    hp: droppedItem.hpBonus || stats.hp || 0,
+                    mp: droppedItem.mpBonus || stats.mp || stats.int || 0,
+                    sp: droppedItem.spBonus || stats.sp || stats.agi || 0,
+                    icon: droppedItem.icon || '🛡️',
+                    name: droppedItem.name,
+                    slot: slotMap[droppedItem.slotType] || 'armor',
+                    sellPrice: 20,
+                    upgradeLevel: 0
+                };
+
+                player.inventory.push(newEquip);
+                dropMessage = `🎒 Ви знайшли: ${newEquip.icon} ${newEquip.name}!`;
+                addBattleLog(dropMessage);
+                addLog(dropMessage, "clear");
+            }
         }
         addBattleLog(`Перемога! +${goldGained} золота.${dropMessage ? ' ' + dropMessage : ''}`);
     } else {
@@ -582,12 +775,33 @@ function skillBlock() {
     monsterAttack();
 }
 
-setInterval(() => {
-    if (!currentMonster && player && player.currentSP < getStatsWithBonuses().maxSP) {
-        player.currentSP = Math.min(player.currentSP + 1, getStatsWithBonuses().maxSP);
-        updateUI();
+function useClassSkill(skill) {
+    if (!currentMonster || !player) return;
+    
+    if (skill.spCost && player.currentSP < skill.spCost) {
+        addBattleLog(`Недостатньо SP (потрібно ${skill.spCost}).`);
+        return;
     }
-}, 10000);
+    if (skill.mpCost && player.currentMP < skill.mpCost) {
+        addBattleLog(`Недостатньо MP (потрібно ${skill.mpCost}).`);
+        return;
+    }
+
+    if (skill.spCost) player.currentSP -= skill.spCost;
+    if (skill.mpCost) player.currentMP -= skill.mpCost;
+
+    player.dailyQuests.skillsUsed = (player.dailyQuests.skillsUsed || 0) + 1;
+    
+    const stats = getStatsWithBonuses();
+    const baseDmg = 10 + player.level * 2 + stats.attack;
+    monsterHP -= baseDmg;
+    if (monsterHP < 0) monsterHP = 0;
+
+    addBattleLog(`✨ Використано ${skill.name}! Завдано ${baseDmg} шкоди.`);
+    updateBattleHP();
+    if (monsterHP <= 0) { endBattle(true); return; }
+    monsterAttack();
+}
 
 function renderBattleSkills() {
     const container = document.getElementById('battle-skills-container');
@@ -595,10 +809,13 @@ function renderBattleSkills() {
 
     container.innerHTML = '';
 
-    if (!player.heroClass || !player.subClass) return;
+    const heroClass = player.heroClass || player.class;
+    const subClass = player.subClass || player.subclass;
 
-    const subData = CLASSES_CONFIG[player.heroClass]?.subclasses[player.subClass];
-    if (!subData) return;
+    if (!heroClass || !subClass || !CLASSES_CONFIG[heroClass]) return;
+
+    const subData = CLASSES_CONFIG[heroClass].subclasses[subClass];
+    if (!subData || !subData.skills) return;
 
     subData.skills.forEach(skill => {
         const btn = document.createElement('button');
@@ -606,13 +823,20 @@ function renderBattleSkills() {
         
         let costText = "";
         if (skill.spCost > 0) costText += `${skill.spCost} SP`;
-        if (skill.mpCost > 0) costText += `${skill.mpCost} MP`;
+        if (skill.mpCost > 0) costText += `${costText ? ' ' : ''}${skill.mpCost} MP`;
 
         btn.innerText = `${skill.name} (${costText})`;
         btn.onclick = () => useClassSkill(skill);
         container.appendChild(btn);
     });
 }
+
+setInterval(() => {
+    if (!currentMonster && player && player.currentSP < getStatsWithBonuses().maxSP) {
+        player.currentSP = Math.min(player.currentSP + 1, getStatsWithBonuses().maxSP);
+        updateUI();
+    }
+}, 10000);
 
 // ==========================================
 // 7. ЗАВДАННЯ, МАГАЗИН, КОВАЛЬ
@@ -916,112 +1140,11 @@ function resetGame() {
         addLog("Персонажа скинуто.", "danger");
     }
 }
-//============================
-//Класи
-//============================
-
-const CLASSES_CONFIG = {
-    warrior: {
-        name: "Воїн",
-        subclasses: {
-            tank: {
-                name: "Танк",
-                desc: "Високий запас HP та броня",
-                bonuses: { hp: 50, defense: 5, attack: 0, critChance: 0 },
-                skills: [
-                    { id: 'shield_bash', name: "🛡️ Удар щитом", spCost: 10, mpCost: 0, desc: "Шкода + засліплення/блокування" },
-                    { id: 'taunt', name: "🧱 Захисна стійка", spCost: 15, mpCost: 0, desc: "Збільшує захист на декілька ходів" }
-                ]
-            },
-            dd: {
-                name: "ДД (Берсерк)",
-                desc: "Великий урон та високий шанс критичного удару",
-                bonuses: { hp: 0, defense: 0, attack: 8, critChance: 0.20 }, // 20% кріту
-                skills: [
-                    { id: 'heavy_slash', name: "⚔️ Важкий розруб", spCost: 15, mpCost: 0, desc: "Потрійна шкода" },
-                    { id: 'frenzy', name: "🔥 Лють", spCost: 20, mpCost: 0, desc: "Збільшує урон на наступний ход" }
-                ]
-            }
-        }
-    },
-    mage: {
-        name: "Маг",
-        subclasses: {
-            fire: {
-                name: "Маг Вогню",
-                desc: "Величезний урон по площі та горіння",
-                bonuses: { mp: 30, attack: 6, critChance: 0.10 },
-                skills: [
-                    { id: 'fireball', name: "🔥 Вогняна куля", spCost: 0, mpCost: 12, desc: "Сильний магічний урон" },
-                    { id: 'burn', name: "🌋 Підпал", spCost: 0, mpCost: 15, desc: "Періодичний урон" }
-                ]
-            },
-            water: {
-                name: "Маг Води",
-                desc: "Самолікування та контроль",
-                bonuses: { mp: 40, hp: 20, defense: 2 },
-                skills: [
-                    { id: 'heal_wave', name: "🌊 Хвиля зцілення", spCost: 0, mpCost: 10, desc: "Відновлює 40 HP" },
-                    { id: 'ice_shield', name: "🧊 Крижана броня", spCost: 0, mpCost: 12, desc: "Дає +10 до захисту" }
-                ]
-            },
-            lightning: {
-                name: "Маг Електрики",
-                desc: "Критичні розряди та висока швидкість",
-                bonuses: { mp: 25, attack: 4, critChance: 0.25 },
-                skills: [
-                    { id: 'lightning_bolt', name: "⚡ Блискавка", spCost: 0, mpCost: 10, desc: "Швидка шкода з високим крітом" },
-                    { id: 'chain_light', name: "🌩️ Ланцюгова блискавка", spCost: 0, mpCost: 18, desc: "Масований розряд" }
-                ]
-            }
-        }
-    },
-    ranger: {
-        name: "Ренджер",
-        subclasses: {
-            assassin: {
-                name: "Асасін (2 кинджали)",
-                desc: "Швидкі подвійні удари та критична шкода",
-                bonuses: { sp: 30, attack: 5, critChance: 0.30 },
-                skills: [
-                    { id: 'double_stab', name: "🗡️🗡️ Подвійний укол", spCost: 12, mpCost: 0, desc: "2 швидкі атаки" },
-                    { id: 'poison_blade', name: "🧪 Отруєне лезо", spCost: 15, mpCost: 0, desc: "Шкода + отрута" }
-                ]
-            },
-            archer: {
-                name: " Лучник",
-                desc: "Далекий бій, точність та виснаження",
-                bonuses: { sp: 20, attack: 7, critChance: 0.15 },
-                skills: [
-                    { id: 'aimed_shot', name: "🎯 Прицільний постріл", spCost: 10, mpCost: 0, desc: "Ігнорує броню" },
-                    { id: 'arrow_rain', name: "🏹 Град стріл", spCost: 20, mpCost: 0, desc: "Потрійний постріл" }
-                ]
-            }
-        }
-    }
-};
-
-function updateSubclassDropdown() {
-    const classVal = document.getElementById('reg-class').value;
-    const subSelect = document.getElementById('reg-subclass');
-    subSelect.innerHTML = '';
-
-    const subClasses = CLASSES_CONFIG[classVal].subclasses;
-    for (let key in subClasses) {
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = `${subClasses[key].name} (${subClasses[key].desc})`;
-        subSelect.appendChild(opt);
-    }
-
-}
-
-
 
 // Ініціалізація при завантаженні
 window.onload = () => {
     loadPlayer();
     if (typeof updateSubclassDropdown === 'function') {
-        updateSubclassDropdown(); // заповнює підкласи для першого завантаження формочки
+        updateSubclassDropdown();
     }
 };

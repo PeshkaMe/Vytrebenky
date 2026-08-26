@@ -97,11 +97,14 @@
                         <button class="action-btn attack-btn" onclick="attackMonster()">⚔️ Атакувати</button>
                         <button class="action-btn flee-btn" onclick="fleeBattle()">🏃 Втекти</button>
                     </div>
+                    <!-- Базові скіли -->
                     <div class="battle-skills">
                         <button class="skill-btn power-btn" onclick="skillPowerAttack()">⚡ Сильний удар (15 SP)</button>
                         <button class="skill-btn heal-btn" onclick="skillHeal()">💚 Лікування (10 MP)</button>
                         <button class="skill-btn block-btn" onclick="skillBlock()">🛡️ Блок (10 SP)</button>
                     </div>
+                    <!-- Динамічні класові скіли -->
+                    <div id="battle-skills-container" class="battle-skills"></div>
                 </div>
             </div>
 
