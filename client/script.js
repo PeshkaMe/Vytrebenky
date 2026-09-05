@@ -13,6 +13,11 @@ socket.on('player_loaded', (savedPlayer) => {
         player = savedPlayer;
         if (!player.theme) player.theme = 'original';
         applyTheme(player.theme);
+        if (!player.currentLocationId) {
+            player.currentLocationId = LOCATIONS[0].id;
+        }
+        const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
+        setCurrentLocation(loc);
         updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
@@ -23,10 +28,14 @@ socket.on('player_loaded', (savedPlayer) => {
 socket.on('auth_success', (res) => {
     currentUser = res.username;
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
-    
     player = res.data;
     if (!player.theme) player.theme = 'original';
     applyTheme(player.theme);
+    if (!player.currentLocationId) {
+        player.currentLocationId = LOCATIONS[0].id;
+    }
+    const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
+    setCurrentLocation(loc);
     closeAuthModal();
     addLog(res.message, "clear");
     updateUI();
@@ -41,14 +50,8 @@ function sendFakeChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
     if (!text) return;
-
     const userName = (player && player.name) ? player.name : 'Гравець';
-
-    socket.emit('send_chat_message', {
-        user: userName,
-        text: text
-    });
-
+    socket.emit('send_chat_message', { user: userName, text: text });
     input.value = "";
 }
 
@@ -166,13 +169,11 @@ const RING_DATABASE = [
     { id: "ring_crit", name: "Кільце точного удару", icon: "💍", stats: { crit: 4 } }
 ];
 
-// Універсальна функція рандомного луту
 function getRandomLootDrop(playerClass, playerSubclass) {
     const types = ['armor', 'weapon', 'helmet', 'ring'];
     const selectedType = types[Math.floor(Math.random() * types.length)];
 
     let pool = [];
-
     if (selectedType === 'ring') {
         pool = RING_DATABASE;
     } else {
@@ -277,11 +278,92 @@ const CLASSES_CONFIG = {
     }
 };
 
-// БАЛАНС: монстри тепер мають чіткі рівні (1, 2, 3)
-const MONSTERS = [
-    { name: "🐗 Лютий Кабан", hp: 50, minDmg: 2, maxDmg: 5, level: 1, image: "boar.jpg" },
-    { name: "🕷️ Печерний Павук", hp: 70, minDmg: 3, maxDmg: 8, level: 2, image: "spider.jpg" },
-    { name: "🐊 Болотяний Гурк", hp: 100, minDmg: 5, maxDmg: 10, level: 3, image: "crocodile.jpg" }
+// ---------- ЛОКАЦІЇ (5 локацій, без Підземелля) ----------
+const LOCATIONS = [
+    {
+        id: 'forest',
+        name: '🌲 Ліс',
+        image: 'forest.jpg',
+        minLevel: 1,
+        maxLevel: 3,
+        monsters: [
+            { name: "🐗 Дикий Кабан", hp: 50, minDmg: 2, maxDmg: 5, level: 1, image: "boar.jpg" },
+            { name: "🕷️ Лісовий Павук", hp: 65, minDmg: 3, maxDmg: 7, level: 2, image: "spider.jpg" },
+            { name: "🐺 Сірий Вовк", hp: 80, minDmg: 4, maxDmg: 9, level: 3, image: "wolf.jpg" },
+            { name: "🌿 Лісовий Елементаль", hp: 95, minDmg: 5, maxDmg: 11, level: 3, image: "elemental.jpg" },
+            { name: "🦌 Лісовий Олень", hp: 60, minDmg: 2, maxDmg: 6, level: 1, image: "deer.jpg" }
+        ]
+    },
+    {
+        id: 'mountains',
+        name: '🏔️ Гори',
+        image: 'mountains.jpg',
+        minLevel: 3,
+        maxLevel: 5,
+        monsters: [
+            { name: "🦅 Гірський Орел", hp: 90, minDmg: 5, maxDmg: 10, level: 3, image: "eagle.jpg" },
+            { name: "🗿 Гірський Голем", hp: 130, minDmg: 6, maxDmg: 13, level: 4, image: "golem.jpg" },
+            { name: "🐉 Кам'яний Дракон", hp: 160, minDmg: 8, maxDmg: 16, level: 5, image: "dragon.jpg" },
+            { name: "🐐 Гірський Козел", hp: 75, minDmg: 4, maxDmg: 8, level: 3, image: "goat.jpg" },
+            { name: "🧙 Гірський Шаман", hp: 110, minDmg: 7, maxDmg: 14, level: 4, image: "shaman.jpg" }
+        ]
+    },
+    {
+        id: 'desert',
+        name: '🏜️ Пустеля',
+        image: 'desert.jpg',
+        minLevel: 5,
+        maxLevel: 8,
+        monsters: [
+            { name: "🦂 Гігантський Скорпіон", hp: 130, minDmg: 6, maxDmg: 13, level: 5, image: "scorpion.jpg" },
+            { name: "🐍 Піщана Змія", hp: 160, minDmg: 8, maxDmg: 16, level: 6, image: "snake.jpg" },
+            { name: "👹 Пустельний Джин", hp: 200, minDmg: 10, maxDmg: 20, level: 8, image: "genie.jpg" },
+            { name: "🐪 Жорстокий Верблюд", hp: 110, minDmg: 5, maxDmg: 12, level: 5, image: "camel.jpg" },
+            { name: "🌪️ Піщаний Елементаль", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "sand_elemental.jpg" }
+        ]
+    },
+    {
+        id: 'swamp',
+        name: '🌿 Болото',
+        image: 'swamp.jpg',
+        minLevel: 2,
+        maxLevel: 5,
+        monsters: [
+            { name: "🐊 Болотяний Крокодил", hp: 100, minDmg: 5, maxDmg: 10, level: 3, image: "crocodile.jpg" },
+            { name: "🧟 Болотяний Зомбі", hp: 80, minDmg: 4, maxDmg: 9, level: 2, image: "zombie.jpg" },
+            { name: "🐍 Отруйна Змія", hp: 70, minDmg: 3, maxDmg: 8, level: 2, image: "poison_snake.jpg" },
+            { name: "🌿 Болотяний Дух", hp: 120, minDmg: 6, maxDmg: 13, level: 4, image: "swamp_spirit.jpg" },
+            { name: "🕷️ Болотяний Павук", hp: 90, minDmg: 4, maxDmg: 9, level: 3, image: "swamp_spider.jpg" }
+        ]
+    },
+    {
+        id: 'volcano',
+        name: '🌋 Вулкан',
+        image: 'volcano.jpg',
+        minLevel: 6,
+        maxLevel: 10,
+        monsters: [
+            { name: "🔥 Вогняний Елементаль", hp: 150, minDmg: 8, maxDmg: 16, level: 6, image: "fire_elemental.jpg" },
+            { name: "🐉 Вогняний Дракон", hp: 220, minDmg: 12, maxDmg: 24, level: 9, image: "fire_dragon.jpg" },
+            { name: "🗿 Лавовий Голем", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "lava_golem.jpg" },
+            { name: "🦂 Вогняний Скорпіон", hp: 130, minDmg: 7, maxDmg: 14, level: 6, image: "fire_scorpion.jpg" },
+            { name: "👹 Демон Вогню", hp: 200, minDmg: 11, maxDmg: 22, level: 8, image: "fire_demon.jpg" }
+        ]
+    }
+];
+
+// ---------- ІНШІ КОНСТАНТИ ----------
+const RANDOM_EVENTS = [
+    "🌿 Ви натрапили на стародавнє капище, але там нікого немає.",
+    "🍄 Ви знайшли галявину з дивними грибами. Вони світяться в темряві.",
+    "🌧️ Почалася злива. Ви сховалися під деревом і перечекали.",
+    "🦉 Нічний вітер приніс звуки далекої битви. Ви вирішили не втручатися.",
+    "📜 Ви знайшли обгорілий сувій, але текст уже не прочитати.",
+    "💨 Раптовий порив вітру збив вас з ніг, але ви швидко підвелися.",
+    "🐺 Здалеку почувся вовчий вий. Ви прискорили крок.",
+    "🌟 Ви побачили падаючу зірку. Загадали бажання.",
+    "🕯️ Старий мандрівник розповів вам історію про загублене місто.",
+    "🌊 Ви вийшли до берега підземного озера. Вода була прозорою, як скло."
 ];
 
 const SHOP_ITEMS = [
@@ -300,26 +382,11 @@ const DAILY_QUESTS = [
 ];
 
 // ==========================================
-// 2.1 НОВІ КОНСТАНТИ ДЛЯ ПОДОРОЖЕЙ
-// ==========================================
-const RANDOM_EVENTS = [
-    "🌿 Ви натрапили на стародавнє капище, але там нікого немає.",
-    "🍄 Ви знайшли галявину з дивними грибами. Вони світяться в темряві.",
-    "🌧️ Почалася злива. Ви сховалися під деревом і перечекали.",
-    "🦉 Нічний вітер приніс звуки далекої битви. Ви вирішили не втручатися.",
-    "📜 Ви знайшли обгорілий сувій, але текст уже не прочитати.",
-    "💨 Раптовий порив вітру збив вас з ніг, але ви швидко підвелися.",
-    "🐺 Здалеку почувся вовчий вий. Ви прискорили крок.",
-    "🌟 Ви побачили падаючу зірку. Загадали бажання.",
-    "🕯️ Старий мандрівник розповів вам історію про загублене місто.",
-    "🌊 Ви вийшли до берега підземного озера. Вода була прозорою, як скло."
-];
-
-// ==========================================
 // 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
 let player = null;
+let currentLocation = LOCATIONS[0];
 
 function changeTheme(themeName) {
     if (!player) return;
@@ -332,7 +399,6 @@ function changeTheme(themeName) {
 function applyTheme(themeName) {
     const validTheme = ['original', 'light', 'dark'].includes(themeName) ? themeName : 'original';
     document.body.className = `theme-${validTheme}`;
-    
     const radioBtn = document.querySelector(`input[name="theme-choice"][value="${validTheme}"]`);
     if (radioBtn) radioBtn.checked = true;
 }
@@ -340,7 +406,6 @@ function applyTheme(themeName) {
 function loadPlayer() {
     const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
     applyTheme(localTheme);
-
     if (currentUser) {
         socket.emit('load_player', currentUser);
         closeAuthModal();
@@ -368,6 +433,11 @@ function openAuthModal() {
 function closeAuthModal() { 
     document.getElementById('auth-modal').classList.add('hidden'); 
     document.getElementById('main-game-wrapper').classList.remove('hidden');
+    if (player) {
+        const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
+        setCurrentLocation(loc);
+        updateUI();
+    }
 }
 
 function switchAuthTab(tab) {
@@ -383,7 +453,6 @@ function updateSubclassDropdown() {
     const subSelect = document.getElementById('reg-subclass');
     if (!subSelect) return;
     subSelect.innerHTML = '';
-
     const subClasses = CLASSES_CONFIG[classVal].subclasses;
     for (let key in subClasses) {
         const opt = document.createElement('option');
@@ -400,30 +469,28 @@ function register() {
         document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
         return; 
     }
-
     const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
-
     const newPlayerData = {
-    name: username,
-    heroClass: document.getElementById('reg-class').value,
-    subClass: document.getElementById('reg-subclass').value,
-    gold: 5,
-    xp: 0,
-    level: 1,
-    theme: localTheme,
-    inventory: [],
-    equipment: { weapon: null, armor: null, helmet: null, accessory: null },
-    currentHP: 120,
-    currentMP: 15,
-    currentSP: 60,
-    dailyQuests: {
-        kills: 0, kills_claimed: false,
-        purchases: 0, purchases_claimed: false,
-        skillsUsed: 0, skillsUsed_claimed: false,
-        lastReset: null
+        name: username,
+        heroClass: document.getElementById('reg-class').value,
+        subClass: document.getElementById('reg-subclass').value,
+        gold: 5,
+        xp: 0,
+        level: 1,
+        theme: localTheme,
+        currentLocationId: LOCATIONS[0].id,
+        inventory: [],
+        equipment: { weapon: null, armor: null, helmet: null, accessory: null },
+        currentHP: 120,
+        currentMP: 15,
+        currentSP: 60,
+        dailyQuests: {
+            kills: 0, kills_claimed: false,
+            purchases: 0, purchases_claimed: false,
+            skillsUsed: 0, skillsUsed_claimed: false,
+            lastReset: null
         }
     };
-
     socket.emit('register', {
         username: username,
         password: password,
@@ -438,7 +505,6 @@ function login() {
         document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
         return; 
     }
-
     socket.emit('login', {
         username: username,
         password: password
@@ -467,22 +533,79 @@ let playerBlocking = false;
 // 5. ІНТЕРФЕЙС
 // ==========================================
 
-// БАЛАНС: функція для розрахунку необхідного досвіду для рівня
 function getXpForLevel(level) {
-    return 100 + (level - 1) * 50;  // 1 -> 100, 2 -> 150, 3 -> 200, ...
+    return 100 + (level - 1) * 50;
 }
 
+// --- ЛОКАЦІЇ ---
+function updateLocationDisplay() {
+    const img = document.getElementById('location-image');
+    const nameEl = document.getElementById('location-name');
+    const levelsEl = document.getElementById('location-levels');
+    if (img) img.src = currentLocation.image;
+    if (nameEl) nameEl.textContent = currentLocation.name;
+    if (levelsEl) levelsEl.textContent = `рівні ${currentLocation.minLevel}–${currentLocation.maxLevel}`;
+}
+
+function setCurrentLocation(loc) {
+    if (!loc) return;
+    currentLocation = loc;
+    if (player) {
+        player.currentLocationId = loc.id;
+        savePlayerData();
+    }
+    updateLocationDisplay();
+    if (!document.getElementById('location-modal').classList.contains('hidden')) {
+        renderLocationList();
+    }
+}
+
+function openLocationModal() {
+    document.getElementById('location-modal').classList.remove('hidden');
+    renderLocationList();
+}
+
+function closeLocationModal() {
+    document.getElementById('location-modal').classList.add('hidden');
+}
+
+function renderLocationList() {
+    const list = document.getElementById('location-list');
+    if (!list) return;
+    list.innerHTML = '';
+    LOCATIONS.forEach(loc => {
+        const isLocked = player && player.level < loc.minLevel;
+        const isActive = currentLocation && currentLocation.id === loc.id;
+        const div = document.createElement('div');
+        div.className = `location-option${isLocked ? ' locked' : ''}${isActive ? ' active' : ''}`;
+        div.innerHTML = `
+            <img src="${loc.image}" alt="${loc.name}" class="loc-image">
+            <div class="loc-info">
+                <div class="loc-name">${loc.name}</div>
+                <div class="loc-levels">рівні ${loc.minLevel}–${loc.maxLevel}</div>
+            </div>
+            <div class="loc-status">${isLocked ? '🔒' : (isActive ? '✅' : '')}</div>
+        `;
+        if (!isLocked) {
+            div.onclick = () => {
+                setCurrentLocation(loc);
+                closeLocationModal();
+                updateUI();
+            };
+        }
+        list.appendChild(div);
+    });
+}
+
+// --- ОСНОВНИЙ UI ---
 function updateUI() {
     if (!player) return;
-
     document.getElementById('p-name').innerText = player.name;
     document.getElementById('p-level').innerText = player.level;
     document.getElementById('p-gold').innerText = player.gold;
-    // БАЛАНС: показуємо XP/потрібно
     const xpNeeded = getXpForLevel(player.level);
     document.getElementById('p-xp').innerText = `${player.xp}/${xpNeeded}`;
     document.getElementById('p-inv-count').innerText = player.inventory.length;
-    
     applyTheme(player.theme || 'original');
 
     const stats = getStatsWithBonuses();
@@ -494,7 +617,6 @@ function updateUI() {
     if (statsBox) {
         statsBox.innerHTML = `Сила: ${stats.attack}<br>Захист: ${stats.defense}<br>HP: ${player.currentHP}/${stats.maxHP}<br>MP: ${player.currentMP}/${stats.maxMP}<br>SP: ${player.currentSP}/${stats.maxSP}`;
     }
-    
     updateEquipmentSlots();
     savePlayerData();
     renderInventory();
@@ -502,20 +624,17 @@ function updateUI() {
     renderQuestsIfActive();
     renderBlacksmithIfActive();
     renderBattleSkills();
+    updateLocationDisplay();
 }
 
 function getStatsWithBonuses() {
     if (!player) return { maxHP: 0, maxMP: 0, maxSP: 0, attack: 0, defense: 0, critChance: 0 };
-    
     let baseHP = 120 + player.level * 20;
     let baseMP = 10 + player.level * 5;
     let baseSP = 60 + player.level * 10;
-    
     let bonusHP = 0, bonusMP = 0, bonusSP = 0, attack = 0, defense = 0, critChance = 0.05;
-
     const heroClass = player.heroClass || player.class;
     const subClass = player.subClass || player.subclass;
-
     if (heroClass && subClass && CLASSES_CONFIG[heroClass]) {
         const subData = CLASSES_CONFIG[heroClass].subclasses[subClass];
         if (subData && subData.bonuses) {
@@ -527,7 +646,6 @@ function getStatsWithBonuses() {
             critChance += subData.bonuses.critChance || 0;
         }
     }
-
     for (let slot in player.equipment) {
         const item = player.equipment[slot];
         if (item) {
@@ -538,7 +656,6 @@ function getStatsWithBonuses() {
             bonusSP += item.sp || 0;
         }
     }
-
     return { 
         maxHP: baseHP + bonusHP, 
         maxMP: baseMP + bonusMP, 
@@ -601,10 +718,9 @@ function switchTab(tab) {
 }
 
 // ==========================================
-// 6. НОВА СИСТЕМА ПОДОРОЖЕЙ
+// 6. СИСТЕМА ПОДОРОЖЕЙ І БІЙ
 // ==========================================
 
-// Головна функція дослідження
 function explore() {
     console.log("🔍 explore() викликано");
     if (!player) {
@@ -619,27 +735,27 @@ function explore() {
         addLog("Недостатньо стаміни (потрібно 5).", "danger");
         return;
     }
-    
-    // Списуємо SP
+    if (player.level < currentLocation.minLevel) {
+        addLog(`Ця локація вимагає мінімальний рівень ${currentLocation.minLevel}.`, "danger");
+        return;
+    }
+
     player.currentSP -= 5;
     updateUI();
 
-    // Генеруємо випадкову подію
     const roll = Math.random();
     console.log(`🎲 roll = ${roll.toFixed(2)}`);
 
     try {
         if (roll < 0.45) {
-            // 45% – бій
-            const monster = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
+            const monsters = currentLocation.monsters;
+            const monster = monsters[Math.floor(Math.random() * monsters.length)];
             console.log("⚔️ Зустріч з монстром:", monster.name);
             startBattle(monster);
         } else if (roll < 0.80) {
-            // 35% – нагорода
             console.log("🎁 Винагорода");
             giveReward();
         } else {
-            // 20% – текстова подія
             console.log("📖 Текстова подія");
             showRandomEvent();
         }
@@ -656,7 +772,6 @@ function explore() {
 function startBattle(monster) {
     console.log("⚔️ startBattle() викликано для", monster.name);
     if (!player) return;
-
     currentMonster = monster;
     monsterHP = monster.hp;
     playerBlocking = false;
@@ -667,18 +782,14 @@ function startBattle(monster) {
         console.error("❌ Не знайдено елементи arena-idle або arena-battle");
         return;
     }
-
     idle.classList.add('hidden');
     battle.classList.remove('hidden');
 
-    // Заповнюємо дані гравця
     document.getElementById('bf-p-name').innerText = player.name;
     document.getElementById('bf-p-level').innerText = player.level;
-
     const stats = getStatsWithBonuses();
     document.getElementById('bf-p-hp').innerText = `${player.currentHP}/${stats.maxHP}`;
 
-    // Спрайт монстра
     const monsterSprite = document.getElementById('monster-sprite');
     if (monsterSprite) {
         monsterSprite.style.backgroundImage = `url('${monster.image}')`;
@@ -687,8 +798,6 @@ function startBattle(monster) {
         monsterSprite.style.backgroundRepeat = 'no-repeat';
         monsterSprite.textContent = '';
     }
-
-    // БАЛАНС: показуємо рівень монстра поруч із назвою
     document.getElementById('bf-m-name').innerText = `${monster.name} [рівень ${monster.level}]`;
     document.getElementById('bf-m-hp').innerText = `${monsterHP}/${monster.hp}`;
 
@@ -698,36 +807,25 @@ function startBattle(monster) {
 
     renderBattleSkills();
     updateBattleHP();
-
     updateUI();
 }
 
-// БАЛАНС: оновлена функція нагороди за дослідження (залежить від рівня гравця)
 function giveReward() {
     console.log("🎁 giveReward() викликано");
     if (!player) return;
-
     try {
-        // Нагорода залежить від рівня гравця
-        const goldGain = Math.floor(5 + player.level * 3 + Math.random() * 6);  // 5-11 + level*3
-        const xpGain = Math.floor(5 + player.level * 4 + Math.random() * 9);    // 5-14 + level*4
+        const goldGain = Math.floor(5 + player.level * 3 + Math.random() * 6);
+        const xpGain = Math.floor(5 + player.level * 4 + Math.random() * 9);
         player.gold += goldGain;
         player.xp += xpGain;
+        let msg = `🎁 Ви знайшли скарб у ${currentLocation.name}! +${goldGain} золота, +${xpGain} досвіду.`;
 
-        let msg = `🎁 Ви знайшли скарб! +${goldGain} золота, +${xpGain} досвіду.`;
-
-        // Шанс на екіпіровку (20%)
         if (Math.random() < 0.20) {
             const heroClass = player.heroClass || player.class;
             const subClass = player.subClass || player.subclass;
             const droppedItem = getRandomLootDrop(heroClass, subClass);
             if (droppedItem) {
-                const slotMap = {
-                    armor: 'armor',
-                    weapon: 'weapon',
-                    helmet: 'helmet',
-                    ring: 'accessory'
-                };
+                const slotMap = { armor: 'armor', weapon: 'weapon', helmet: 'helmet', ring: 'accessory' };
                 const stats = droppedItem.stats || {};
                 const newEquip = {
                     type: 'equip',
@@ -750,20 +848,17 @@ function giveReward() {
             }
         }
 
-        // Перевірка на новий рівень з новою формулою XP
         const xpNeeded = getXpForLevel(player.level);
         while (player.xp >= xpNeeded) {
             player.xp -= xpNeeded;
             player.level += 1;
             msg += ` Вітаємо! Рівень ${player.level}!`;
-            // після підвищення рівня перераховуємо новий поріг
             const newNeeded = getXpForLevel(player.level);
             if (player.xp >= newNeeded) continue;
         }
 
         addBattleLog(msg);
         addLog(msg, "clear");
-
         document.getElementById('arena-idle').classList.remove('hidden');
         document.getElementById('arena-battle').classList.add('hidden');
         currentMonster = null;
@@ -782,12 +877,10 @@ function giveReward() {
 function showRandomEvent() {
     console.log("📖 showRandomEvent() викликано");
     if (!player) return;
-
     try {
         const eventText = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
         addBattleLog(`📜 ${eventText}`);
         addLog(eventText, "default");
-
         document.getElementById('arena-idle').classList.remove('hidden');
         document.getElementById('arena-battle').classList.add('hidden');
         currentMonster = null;
@@ -815,22 +908,12 @@ function addBattleLog(msg) {
     log.scrollTop = log.scrollHeight;
 }
 
-// ==========================================
-// 6.1 ОРИГІНАЛЬНА БОЙОВА СИСТЕМА (оновлений баланс)
-// ==========================================
-
-function searchMonster() {
-    addLog("Ця кнопка більше не працює. Використовуйте 'Досліджувати'.", "danger");
-}
-
 function attackMonster() {
     if (!currentMonster || !player) return;
     const stats = getStatsWithBonuses();
-    
     const minDmg = 5 + player.level + stats.attack;
     const maxDmg = 10 + player.level + stats.attack;
     let playerDmg = Math.floor(Math.random() * (maxDmg - minDmg + 1)) + minDmg;
-
     const isCrit = Math.random() < stats.critChance;
     if (isCrit) {
         playerDmg = Math.floor(playerDmg * 1.8);
@@ -838,10 +921,8 @@ function attackMonster() {
     } else {
         addBattleLog(`Ви завдали ${playerDmg} шкоди ${currentMonster.name}.`);
     }
-
     monsterHP -= playerDmg;
     if (monsterHP < 0) monsterHP = 0;
-    
     updateBattleHP();
     if (monsterHP <= 0) { endBattle(true); return; }
     monsterAttack();
@@ -870,7 +951,6 @@ function updateBattleHP() {
     if (monsterBar) monsterBar.style.width = `${(monsterHP / currentMonster.hp) * 100}%`;
 }
 
-// БАЛАНС: оновлена функція завершення бою з новими формулами
 function endBattle(victory) {
     if (!player) return;
     playerBlocking = false;
@@ -878,52 +958,30 @@ function endBattle(victory) {
         player.dailyQuests.kills = (player.dailyQuests.kills || 0) + 1;
         checkDailyReset();
 
-        // --- НОВА ФОРМУЛА НАГОРОДИ ---
         const monster = currentMonster;
         const diff = player.level - monster.level;
-
-        // Базові значення
-        const baseGold = monster.level * 3 + Math.floor(Math.random() * 5) + 1; // 1-5 випадкових
+        const baseGold = monster.level * 3 + Math.floor(Math.random() * 5) + 1;
         const baseXP = monster.level * 10 + 5;
-
-        // Множник
         let multiplier = 1.0;
-        if (diff > 0) {
-            multiplier = Math.max(0.2, 1 - diff * 0.1);
-        } else if (diff < 0) {
-            multiplier = Math.min(2.5, 1 + Math.abs(diff) * 0.15);
-        }
-        // Якщо diff == 0, множник залишається 1.0
-
+        if (diff > 0) multiplier = Math.max(0.2, 1 - diff * 0.1);
+        else if (diff < 0) multiplier = Math.min(2.5, 1 + Math.abs(diff) * 0.15);
         const goldGained = Math.floor(baseGold * multiplier);
         const xpGained = Math.floor(baseXP * multiplier);
 
-        // Шанс луту з урахуванням різниці рівнів
-        let lootChance = 0.20; // базовий 20%
-        if (diff > 0) {
-            lootChance = Math.max(0.05, 0.20 - diff * 0.02);
-        } else if (diff < 0) {
-            lootChance = Math.min(0.40, 0.20 + Math.abs(diff) * 0.03);
-        }
-        // --- КІНЕЦЬ НОВОЇ ФОРМУЛИ ---
+        let lootChance = 0.20;
+        if (diff > 0) lootChance = Math.max(0.05, 0.20 - diff * 0.02);
+        else if (diff < 0) lootChance = Math.min(0.40, 0.20 + Math.abs(diff) * 0.03);
 
         player.gold += goldGained;
         player.xp += xpGained;
-
         let msg = `Перемога! +${goldGained} золота, +${xpGained} досвіду.`;
 
-        // Шанс випадіння луту (оновлений)
         if (Math.random() <= lootChance) {
             const heroClass = player.heroClass || player.class;
             const subClass = player.subClass || player.subclass;
             const droppedItem = getRandomLootDrop(heroClass, subClass);
             if (droppedItem) {
-                const slotMap = {
-                    armor: 'armor',
-                    weapon: 'weapon',
-                    helmet: 'helmet',
-                    ring: 'accessory'
-                };
+                const slotMap = { armor: 'armor', weapon: 'weapon', helmet: 'helmet', ring: 'accessory' };
                 const stats = droppedItem.stats || {};
                 const newEquip = {
                     type: 'equip',
@@ -946,13 +1004,11 @@ function endBattle(victory) {
             }
         }
 
-        // Перевірка на підвищення рівня з новою формулою XP
         const xpNeeded = getXpForLevel(player.level);
         while (player.xp >= xpNeeded) {
             player.xp -= xpNeeded;
             player.level += 1;
             msg += ` Вітаємо! Рівень ${player.level}!`;
-            // після підвищення рівня перераховуємо новий поріг
             const newNeeded = getXpForLevel(player.level);
             if (player.xp >= newNeeded) continue;
         }
@@ -973,15 +1029,24 @@ function endBattle(victory) {
 }
 
 function fleeBattle() {
-    addBattleLog("Ви втекли з бою!");
-    addLog("Ви втекли з поля бою.", "danger");
+    if (!player || !currentMonster) return;
+    const spLost = 5;
+    const goldLost = 2;
+    player.currentSP = Math.max(0, player.currentSP - spLost);
+    player.gold = Math.max(0, player.gold - goldLost);
+    addBattleLog(`Ви втекли з бою! Втрачено ${spLost} SP та ${goldLost} золота.`);
+    addLog(`Ви втекли від ${currentMonster.name}.`, "danger");
     document.getElementById('arena-idle').classList.remove('hidden');
     document.getElementById('arena-battle').classList.add('hidden');
     currentMonster = null;
     playerBlocking = false;
     updateUI();
+    savePlayerData();
 }
 
+// ==========================================
+// 6.2 СКІЛИ
+// ==========================================
 function skillPowerAttack() {
     if (!currentMonster || !player) return;
     if (player.currentSP < 15) { addBattleLog("Недостатньо SP (потрібно 15)."); return; }
@@ -1025,7 +1090,6 @@ function skillBlock() {
 
 function useClassSkill(skill) {
     if (!currentMonster || !player) return;
-    
     if (skill.spCost && player.currentSP < skill.spCost) {
         addBattleLog(`Недостатньо SP (потрібно ${skill.spCost}).`);
         return;
@@ -1034,17 +1098,13 @@ function useClassSkill(skill) {
         addBattleLog(`Недостатньо MP (потрібно ${skill.mpCost}).`);
         return;
     }
-
     if (skill.spCost) player.currentSP -= skill.spCost;
     if (skill.mpCost) player.currentMP -= skill.mpCost;
-
     player.dailyQuests.skillsUsed = (player.dailyQuests.skillsUsed || 0) + 1;
-    
     const stats = getStatsWithBonuses();
     const baseDmg = 10 + player.level * 2 + stats.attack;
     monsterHP -= baseDmg;
     if (monsterHP < 0) monsterHP = 0;
-
     addBattleLog(`✨ Використано ${skill.name}! Завдано ${baseDmg} шкоди.`);
     updateBattleHP();
     if (monsterHP <= 0) { endBattle(true); return; }
@@ -1054,25 +1114,18 @@ function useClassSkill(skill) {
 function renderBattleSkills() {
     const container = document.getElementById('battle-skills-container');
     if (!container || !player) return;
-
     container.innerHTML = '';
-
     const heroClass = player.heroClass || player.class;
     const subClass = player.subClass || player.subclass;
-
     if (!heroClass || !subClass || !CLASSES_CONFIG[heroClass]) return;
-
     const subData = CLASSES_CONFIG[heroClass].subclasses[subClass];
     if (!subData || !subData.skills) return;
-
     subData.skills.forEach(skill => {
         const btn = document.createElement('button');
         btn.className = 'skill-btn power-btn';
-        
         let costText = "";
         if (skill.spCost > 0) costText += `${skill.spCost} SP`;
         if (skill.mpCost > 0) costText += `${costText ? ' ' : ''}${skill.mpCost} MP`;
-
         btn.innerText = `${skill.name} (${costText})`;
         btn.onclick = () => useClassSkill(skill);
         container.appendChild(btn);
@@ -1141,7 +1194,6 @@ function claimQuestReward(questId) {
     const progress = player.dailyQuests[questId] || 0;
     const claimed = player.dailyQuests[questId + '_claimed'] || false;
     if (progress < quest.goal || claimed) return;
-
     player.gold += quest.reward;
     player.dailyQuests[questId + '_claimed'] = true;
     addLog(`Завдання "${quest.description}" виконано! +${quest.reward} золота.`, "clear");
@@ -1193,7 +1245,6 @@ function renderBlacksmith() {
     const container = document.getElementById('blacksmith-list');
     if (!container) return;
     container.innerHTML = '';
-    
     const allEquip = [];
     for (let slot in player.equipment) {
         const item = player.equipment[slot];
@@ -1202,12 +1253,10 @@ function renderBlacksmith() {
     player.inventory.forEach(item => {
         if (item.type === 'equip') allEquip.push({ ...item, source: 'inventory', index: player.inventory.indexOf(item) });
     });
-
     if (allEquip.length === 0) {
         container.innerHTML = '<p>Немає предметів для покращення.</p>';
         return;
     }
-
     allEquip.forEach(item => {
         const nextLevel = (item.upgradeLevel || 0) + 1;
         const maxLevel = 5;
@@ -1239,21 +1288,18 @@ function upgradeItem(instanceId, source, slot, index) {
         item = player.inventory[index];
     }
     if (!item) return;
-
     const nextLevel = (item.upgradeLevel || 0) + 1;
     const cost = nextLevel * 50;
     if (player.gold < cost) {
         addLog("Недостатньо золота для покращення!", "danger");
         return;
     }
-    
     player.gold -= cost;
     item.upgradeLevel = nextLevel;
     if (item.attack) item.attack += 2;
     if (item.defense) item.defense += 1;
     if (item.hp) item.hp += 5;
     if (item.sp) item.sp += 2;
-    
     addLog(`${item.name} покращено до рівня ${nextLevel}!`, "clear");
     updateUI();
 }
@@ -1294,7 +1340,6 @@ function showItemDetail(item) {
     selectedItemDetail = item.instanceId;
     const modal = document.getElementById('item-detail-modal');
     document.getElementById('detail-stats').innerHTML = '';
-    
     if (item.type === 'equip') {
         document.getElementById('detail-title').innerText = `${item.name} (Рівень ${item.upgradeLevel || 0})`;
         document.getElementById('detail-stats').innerHTML = `<p>🗡️ Атака: ${item.attack||0}</p><p>🛡️ Захист: ${item.defense||0}</p><p>❤️ HP: +${item.hp||0}</p><p>💧 MP: +${item.mp||0}</p><p>⚡ SP: +${item.sp||0}</p><p>💰 Ціна продажу: ${item.sellPrice || 15} золота</p>`;
@@ -1307,10 +1352,8 @@ function showItemDetail(item) {
         document.getElementById('detail-primary-btn').innerText = '🧪 Використати';
         document.getElementById('detail-primary-btn').onclick = () => { useConsumable(selectedItemDetail); closeItemDetail(); };
     }
-
     document.getElementById('detail-sell-btn').onclick = () => { sellItem(selectedItemDetail); closeItemDetail(); };
     document.getElementById('detail-discard-btn').onclick = () => { discardItem(selectedItemDetail); closeItemDetail(); };
-
     modal.classList.remove('hidden');
 }
 
@@ -1325,11 +1368,9 @@ function equipItem(instanceId) {
     if (index === -1) return;
     const item = player.inventory[index];
     const slot = item.slot;
-
     if (player.equipment[slot]) {
         player.inventory.push(player.equipment[slot]);
     }
-
     player.equipment[slot] = item;
     player.inventory.splice(index, 1);
     addLog(`Екіпіровано: ${item.name}`, "clear");
@@ -1353,12 +1394,10 @@ function useConsumable(instanceId) {
     const item = player.inventory[index];
     const cons = SHOP_ITEMS.find(c => c.id === item.id);
     if (!cons) return;
-
     const stats = getStatsWithBonuses();
     if (cons.effect.hp) player.currentHP = Math.min(player.currentHP + cons.effect.hp, stats.maxHP);
     if (cons.effect.mp) player.currentMP = Math.min(player.currentMP + cons.effect.mp, stats.maxMP);
     if (cons.effect.sp) player.currentSP = Math.min(player.currentSP + cons.effect.sp, stats.maxSP);
-
     player.inventory.splice(index, 1);
     addLog(`Використано: ${cons.name}`, "clear");
     updateUI();
@@ -1397,13 +1436,15 @@ function resetGame() {
         player.currentHP = 120;
         player.currentMP = 15;
         player.currentSP = 60;
+        player.currentLocationId = LOCATIONS[0].id;
+        setCurrentLocation(LOCATIONS[0]);
         savePlayerData();
         updateUI();
         addLog("Персонажа скинуто.", "danger");
     }
 }
 
-// Ініціалізація при завантаженні
+// Ініціалізація
 window.onload = () => {
     loadPlayer();
     if (typeof updateSubclassDropdown === 'function') {

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="theme-original">
-    <!-- Модалка обов'язкової авторизації при вході -->
+    <!-- Модалка авторизації -->
     <div id="auth-modal" class="modal-overlay">
         <div class="modal">
             <div class="auth-tabs">
@@ -23,27 +23,21 @@
             <div id="auth-form-register" class="auth-form hidden">
                 <input type="text" id="reg-username" placeholder="Придумайте логін">
                 <input type="password" id="reg-password" placeholder="Пароль">
-                
-                <!-- Вибір класу -->
                 <select id="reg-class" onchange="updateSubclassDropdown()" style="padding: 8px; margin-bottom: 8px;">
                     <option value="warrior">Воїн</option>
                     <option value="mage">Маг</option>
                     <option value="ranger">Ренджер</option>
                 </select>
-            
-                <!-- Вибір підкласу -->
-                <select id="reg-subclass" style="padding: 8px; margin-bottom: 12px;">
-                    <!-- Заповнюється динамічно -->
-                </select>
-            
+                <select id="reg-subclass" style="padding: 8px; margin-bottom: 12px;"></select>
                 <button onclick="register()" class="pay-btn">Зареєструватися</button>
             </div>
             <p id="auth-error" style="color: red; font-size: 12px; margin-top: 10px;"></p>
         </div>
     </div>
 
-    <!-- Основний контент гри (прихований до входу) -->
+    <!-- Основний контент -->
     <div id="main-game-wrapper" class="hidden">
+        <!-- Верхня панель -->
         <div class="top-nav-bar">
             <div class="bars-container">
                 <div class="character-name">[X] <span id="p-name">Воїн</span> [<span id="p-level">1</span>]</div>
@@ -62,7 +56,7 @@
                 <button class="nav-icon-btn" id="btn-settings" onclick="switchTab('settings')">⚙️ Опції</button>
             </div>
             <div class="economy-container">
-                <div class="econ-item">🧪 XP: <span id="p-xp">0</span></div>
+                <div class="econ-item">🧪 XP: <span id="p-xp">0/100</span></div>
                 <div class="econ-item">💰 Золото: <span id="p-gold">0</span></div>
                 <button class="logout-btn" onclick="logout()">Вийти</button>
             </div>
@@ -71,11 +65,22 @@
         <div class="main-content">
             <!-- АРЕНА -->
             <div id="zone-arena" class="arena-zone">
+                <!-- Режим очікування (локація) -->
                 <div id="arena-idle">
-                    <h3>Зона Полювання</h3>
-                    <!-- ЗМІНА: кнопка тепер "Досліджувати" -->
-                    <button class="search-btn" onclick="explore()">🚶 Досліджувати (5 SP)</button>
+                    <!-- Картинка локації -->
+                    <div id="location-display">
+                        <img id="location-image" src="forest.jpg" alt="Локація">
+                        <div id="location-name" style="font-size: 24px; font-weight: bold; margin: 5px 0;">🌲 Ліс</div>
+                        <div id="location-levels" style="font-size: 16px; opacity: 0.8;">рівні 1–3</div>
+                    </div>
+                    <!-- Кнопки -->
+                    <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+                        <button class="search-btn" onclick="openLocationModal()" style="background: #444; padding: 12px 25px; font-size: 16px;">🗺️ Вибрати локацію</button>
+                        <button class="search-btn" onclick="explore()" style="background: #8b0000; padding: 12px 25px; font-size: 16px;">🚶 Дослідити (5 SP)</button>
+                    </div>
                 </div>
+
+                <!-- Бій -->
                 <div id="arena-battle" class="hidden">
                     <div class="battle-scene">
                         <div class="fighter player-side">
@@ -98,24 +103,21 @@
                         <button class="action-btn attack-btn" onclick="attackMonster()">⚔️ Атакувати</button>
                         <button class="action-btn flee-btn" onclick="fleeBattle()">🏃 Втекти</button>
                     </div>
-                    <!-- Базові скіли -->
                     <div class="battle-skills">
                         <button class="skill-btn power-btn" onclick="skillPowerAttack()">⚡ Сильний удар (15 SP)</button>
                         <button class="skill-btn heal-btn" onclick="skillHeal()">💚 Лікування (10 MP)</button>
                         <button class="skill-btn block-btn" onclick="skillBlock()">🛡️ Блок (10 SP)</button>
                     </div>
-                    <!-- Динамічні класові скіли -->
                     <div id="battle-skills-container" class="battle-skills"></div>
                 </div>
             </div>
 
-            <!-- МАГАЗИН -->
+            <!-- Інші зони -->
             <div id="zone-shop" class="hidden">
                 <h3>🏪 Крамниця «Під лежачий камінь»</h3>
                 <div class="shop-grid" id="shop-grid"></div>
             </div>
 
-            <!-- ІНВЕНТАР -->
             <div id="zone-guild" class="hidden">
                 <h3>Ваш Інвентар та Екіпіровка (<span id="p-inv-count">0</span>)</h3>
                 <div class="character-panel">
@@ -142,41 +144,27 @@
                 <div class="inventory-grid" id="inventory-grid"></div>
             </div>
 
-            <!-- ЗАВДАННЯ -->
             <div id="zone-quests" class="hidden">
                 <h3>📋 Щоденні завдання</h3>
                 <div class="quests-container" id="quests-container"></div>
             </div>
 
-            <!-- КОВАЛЬ -->
             <div id="zone-blacksmith" class="hidden">
                 <h3>🔨 Коваль</h3>
                 <p>Покращуйте своє спорядження за золото. Максимальний рівень — 5.</p>
                 <div class="blacksmith-list" id="blacksmith-list"></div>
             </div>
 
-            <!-- НАЛАШТУВАННЯ -->
             <div id="zone-settings" class="hidden">
                 <h3>Налаштування Гри</h3>
-                
                 <div class="settings-card">
                     <h4>🎨 Стиль оформлення сайту</h4>
                     <div class="theme-selector">
-                        <label>
-                            <input type="radio" name="theme-choice" value="original" onchange="changeTheme(this.value)"> 
-                            🏛️ Латунний блок (Оригінал)
-                        </label>
-                        <label>
-                            <input type="radio" name="theme-choice" value="light" onchange="changeTheme(this.value)"> 
-                            ☀️ Біла (Світла)
-                        </label>
-                        <label>
-                            <input type="radio" name="theme-choice" value="dark" onchange="changeTheme(this.value)"> 
-                            🌙 Темна
-                        </label>
+                        <label><input type="radio" name="theme-choice" value="original" onchange="changeTheme(this.value)"> 🏛️ Латунний блок (Оригінал)</label>
+                        <label><input type="radio" name="theme-choice" value="light" onchange="changeTheme(this.value)"> ☀️ Біла (Світла)</label>
+                        <label><input type="radio" name="theme-choice" value="dark" onchange="changeTheme(this.value)"> 🌙 Темна</label>
                     </div>
                 </div>
-
                 <div class="settings-card danger-zone">
                     <h4>⚠️ Скидання прогресу</h4>
                     <p>Тут можна повністю скинути прогрес персонажа.</p>
@@ -185,7 +173,7 @@
             </div>
         </div>
 
-        <!-- ЧАТ -->
+        <!-- Чат -->
         <div class="bottom-chat-bar">
             <div class="chat-main-area">
                 <div class="chat-messages" id="log-box"></div>
@@ -208,7 +196,16 @@
         </div>
     </div>
 
-    <!-- Модалка оплати (ліцензії) -->
+    <!-- Модалка вибору локації -->
+    <div id="location-modal" class="modal-overlay hidden">
+        <div class="modal" style="width: 400px; max-width: 90%;">
+            <h3>🗺️ Виберіть локацію</h3>
+            <div id="location-list" style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0; max-height: 400px; overflow-y: auto;"></div>
+            <button onclick="closeLocationModal()" class="cancel-btn" style="margin-top: 10px;">Закрити</button>
+        </div>
+    </div>
+
+    <!-- Модалка оплати -->
     <div id="payment-modal" class="modal-overlay hidden">
         <div class="modal">
             <h3>💳 Оформлення замовлення</h3>
@@ -239,4 +236,4 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="script.js"></script>
 </body>
-</html> 
+</html>

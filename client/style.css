@@ -80,8 +80,6 @@ body.theme-dark .placeholder-box { background: #252525; border-color: #444; colo
 body.theme-dark .character-silhouette { background: #252525; border-color: #444; }
 body.theme-dark .fighter-sprite { background-color: #252525; border-color: #444; }
 body.theme-dark .quest-card.completed { background: #1b381e; border-color: #2e7d32; }
-
-/* ВИПРАВЛЕННЯ ЧИТАБЕЛЬНОСТІ ЧАТУ В ТЕМНІЙ ТЕМІ */
 body.theme-dark .chat-highlight { color: #ffffff; font-weight: bold; }
 body.theme-dark .chat-system { color: #ffb74d; font-weight: bold; }
 body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
@@ -748,6 +746,93 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
 }
 
 /* ==========================================
+   ДОДАТКОВІ СТИЛІ ДЛЯ ЛОКАЦІЙ (З КАРТИНКАМИ)
+   ========================================== */
+#location-display {
+    margin: 20px 0 10px;
+    padding: 15px;
+    border-radius: 12px;
+    transition: background 0.3s;
+}
+body.theme-original #location-display { background: #f0f0f0; border: 1px solid #ccc; }
+body.theme-light #location-display { background: #f8fafc; border: 1px solid #e2e8f0; }
+body.theme-dark #location-display { background: #1e1e1e; border: 1px solid #333; }
+
+#location-image {
+    width: 100%;
+    max-width: 400px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: block;
+    margin: 0 auto;
+}
+
+#location-name {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 5px 0;
+}
+#location-levels {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+/* Модалка вибору локації з маленькими картинками */
+#location-list .location-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    border: 1px solid transparent;
+}
+#location-list .location-option:hover {
+    transform: scale(1.02);
+}
+body.theme-original #location-list .location-option:hover { background: #e0e0e0; }
+body.theme-light #location-list .location-option:hover { background: #edf2f7; }
+body.theme-dark #location-list .location-option:hover { background: #2d2d2d; }
+
+#location-list .location-option.active {
+    border-color: #d4af37;
+    background: rgba(212, 175, 55, 0.15);
+}
+#location-list .location-option.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+#location-list .location-option .loc-image {
+    width: 50px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+#location-list .location-option .loc-info {
+    flex: 1;
+}
+#location-list .location-option .loc-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+#location-list .location-option .loc-levels {
+    font-size: 13px;
+    opacity: 0.7;
+}
+#location-list .location-option .loc-status {
+    font-size: 13px;
+    font-weight: bold;
+    color: #d4af37;
+}
+#location-list .location-option.locked .loc-status {
+    color: #ff4d4d;
+}
+
+/* ==========================================
    АДАПТИВНІСТЬ ДЛЯ МОБІЛЬНИХ ПРИСТРОЇВ (MOBILE)
    ========================================== */
 @media (max-width: 768px) {
@@ -790,7 +875,6 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
         font-size: 11px;
     }
 
-    /* Бій на мобільному */
     .battle-scene {
         flex-direction: column;
         gap: 10px;
@@ -820,7 +904,6 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
         box-sizing: border-box;
     }
 
-    /* Інвентар на мобільному */
     .character-panel {
         flex-direction: column;
     }
@@ -830,7 +913,6 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
         box-sizing: border-box;
     }
 
-    /* Магазин, Квест, Коваль */
     .quest-card, .blacksmith-item {
         flex-direction: column;
         gap: 8px;
@@ -841,7 +923,6 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     }
 
-    /* Чат на мобільному */
     .bottom-chat-bar {
         height: 155px;
     }
@@ -852,5 +933,13 @@ body.theme-dark .chat-danger { color: #ff5252; font-weight: bold; }
 
     .chat-sector {
         display: none;
+    }
+
+    #location-image {
+        height: 140px;
+    }
+    #location-list .location-option .loc-image {
+        width: 40px;
+        height: 30px;
     }
 }
