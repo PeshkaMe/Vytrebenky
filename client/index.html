@@ -62,7 +62,7 @@
                 <button class="nav-icon-btn" id="btn-settings" onclick="switchTab('settings')">⚙️ Опції</button>
             </div>
             <div class="economy-container">
-                <div class="econ-item">🧪 XP: <span id="p-xp">0</span>/100</div>
+                <div class="econ-item">🧪 XP: <span id="p-xp">0</span></div>
                 <div class="econ-item">💰 Золото: <span id="p-gold">0</span></div>
                 <button class="logout-btn" onclick="logout()">Вийти</button>
             </div>
@@ -73,7 +73,8 @@
             <div id="zone-arena" class="arena-zone">
                 <div id="arena-idle">
                     <h3>Зона Полювання</h3>
-                    <button class="search-btn" onclick="searchMonster()">🔍 Шукати Монстра</button>
+                    <!-- ЗМІНА: кнопка тепер "Досліджувати" -->
+                    <button class="search-btn" onclick="explore()">🚶 Досліджувати (5 SP)</button>
                 </div>
                 <div id="arena-battle" class="hidden">
                     <div class="battle-scene">
@@ -238,4 +239,4 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="script.js"></script>
 </body>
-</html>
+</html> 
