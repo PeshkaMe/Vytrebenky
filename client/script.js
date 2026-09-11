@@ -283,71 +283,71 @@ const LOCATIONS = [
     {
         id: 'forest',
         name: '🌲 Ліс',
-        image: 'forest.jpg',
+        image: 'assets/locations/forest.jpg',
         minLevel: 1,
         maxLevel: 3,
         monsters: [
-            { name: "🐗 Дикий Кабан", hp: 50, minDmg: 2, maxDmg: 5, level: 1, image: "boar.jpg" },
-            { name: "🕷️ Лісовий Павук", hp: 65, minDmg: 3, maxDmg: 7, level: 2, image: "spider.jpg" },
-            { name: "🐺 Сірий Вовк", hp: 80, minDmg: 4, maxDmg: 9, level: 3, image: "wolf.jpg" },
-            { name: "🌿 Лісовий Елементаль", hp: 95, minDmg: 5, maxDmg: 11, level: 3, image: "elemental.jpg" },
-            { name: "🦌 Лісовий Олень", hp: 60, minDmg: 2, maxDmg: 6, level: 1, image: "deer.jpg" }
+            { name: "🐗 Дикий Кабан", hp: 50, minDmg: 2, maxDmg: 5, level: 1, image: "assets/monsters/boar.jpg" },
+            { name: "🕷️ Лісовий Павук", hp: 65, minDmg: 3, maxDmg: 7, level: 2, image: "assets/monsters/spider.jpg" },
+            { name: "🐺 Сірий Вовк", hp: 80, minDmg: 4, maxDmg: 9, level: 3, image: "assets/monsters/wolf.jpg" },
+            { name: "🌿 Лісовий Елементаль", hp: 95, minDmg: 5, maxDmg: 11, level: 3, image: "assets/monsters/elemental.jpg" },
+            { name: "🦌 Лісовий Олень", hp: 60, minDmg: 2, maxDmg: 6, level: 1, image: "assets/monsters/deer.jpg" }
         ]
     },
     {
         id: 'mountains',
         name: '🏔️ Гори',
-        image: 'mountains.jpg',
+        image: 'assets/locations/mountains.jpg',
         minLevel: 3,
         maxLevel: 5,
         monsters: [
-            { name: "🦅 Гірський Орел", hp: 90, minDmg: 5, maxDmg: 10, level: 3, image: "eagle.jpg" },
-            { name: "🗿 Гірський Голем", hp: 130, minDmg: 6, maxDmg: 13, level: 4, image: "golem.jpg" },
-            { name: "🐉 Кам'яний Дракон", hp: 160, minDmg: 8, maxDmg: 16, level: 5, image: "dragon.jpg" },
-            { name: "🐐 Гірський Козел", hp: 75, minDmg: 4, maxDmg: 8, level: 3, image: "goat.jpg" },
-            { name: "🧙 Гірський Шаман", hp: 110, minDmg: 7, maxDmg: 14, level: 4, image: "shaman.jpg" }
+            { name: "🦅 Гірський Орел", hp: 90, minDmg: 5, maxDmg: 10, level: 3, image: "assets/monsters/eagle.jpg" },
+            { name: "🗿 Гірський Голем", hp: 130, minDmg: 6, maxDmg: 13, level: 4, image: "assets/monsters/golem.jpg" },
+            { name: "🐉 Кам'яний Дракон", hp: 160, minDmg: 8, maxDmg: 16, level: 5, image: "assets/monsters/dragon.jpg" },
+            { name: "🐐 Гірський Козел", hp: 75, minDmg: 4, maxDmg: 8, level: 3, image: "assets/monsters/goat.jpg" },
+            { name: "🧙 Гірський Шаман", hp: 110, minDmg: 7, maxDmg: 14, level: 4, image: "assets/monsters/shaman.jpg" }
         ]
     },
     {
         id: 'desert',
         name: '🏜️ Пустеля',
-        image: 'desert.jpg',
+        image: 'assets/locations/desert.jpg',
         minLevel: 5,
         maxLevel: 8,
         monsters: [
-            { name: "🦂 Гігантський Скорпіон", hp: 130, minDmg: 6, maxDmg: 13, level: 5, image: "scorpion.jpg" },
-            { name: "🐍 Піщана Змія", hp: 160, minDmg: 8, maxDmg: 16, level: 6, image: "snake.jpg" },
-            { name: "👹 Пустельний Джин", hp: 200, minDmg: 10, maxDmg: 20, level: 8, image: "genie.jpg" },
-            { name: "🐪 Жорстокий Верблюд", hp: 110, minDmg: 5, maxDmg: 12, level: 5, image: "camel.jpg" },
-            { name: "🌪️ Піщаний Елементаль", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "sand_elemental.jpg" }
+            { name: "🦂 Гігантський Скорпіон", hp: 130, minDmg: 6, maxDmg: 13, level: 5, image: "assets/monsters/scorpion.jpg" },
+            { name: "🐍 Піщана Змія", hp: 160, minDmg: 8, maxDmg: 16, level: 6, image: "assets/monsters/snake.jpg" },
+            { name: "👹 Пустельний Джин", hp: 200, minDmg: 10, maxDmg: 20, level: 8, image: "assets/monsters/genie.jpg" },
+            { name: "🐪 Жорстокий Верблюд", hp: 110, minDmg: 5, maxDmg: 12, level: 5, image: "assets/monsters/camel.jpg" },
+            { name: "🌪️ Піщаний Елементаль", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "assets/monsters/sand_elemental.jpg" }
         ]
     },
     {
         id: 'swamp',
         name: '🌿 Болото',
-        image: 'swamp.jpg',
+        image: 'assets/locations/swamp.jpg',
         minLevel: 2,
         maxLevel: 5,
         monsters: [
-            { name: "🐊 Болотяний Крокодил", hp: 100, minDmg: 5, maxDmg: 10, level: 3, image: "crocodile.jpg" },
-            { name: "🧟 Болотяний Зомбі", hp: 80, minDmg: 4, maxDmg: 9, level: 2, image: "zombie.jpg" },
-            { name: "🐍 Отруйна Змія", hp: 70, minDmg: 3, maxDmg: 8, level: 2, image: "poison_snake.jpg" },
-            { name: "🌿 Болотяний Дух", hp: 120, minDmg: 6, maxDmg: 13, level: 4, image: "swamp_spirit.jpg" },
-            { name: "🕷️ Болотяний Павук", hp: 90, minDmg: 4, maxDmg: 9, level: 3, image: "swamp_spider.jpg" }
+            { name: "🐊 Болотяний Крокодил", hp: 100, minDmg: 5, maxDmg: 10, level: 3, image: "assets/monsters/crocodile.jpg" },
+            { name: "🧟 Болотяний Зомбі", hp: 80, minDmg: 4, maxDmg: 9, level: 2, image: "assets/monsters/zombie.jpg" },
+            { name: "🐍 Отруйна Змія", hp: 70, minDmg: 3, maxDmg: 8, level: 2, image: "assets/monsters/poison_snake.jpg" },
+            { name: "🌿 Болотяний Дух", hp: 120, minDmg: 6, maxDmg: 13, level: 4, image: "assets/monsters/swamp_spirit.jpg" },
+            { name: "🕷️ Болотяний Павук", hp: 90, minDmg: 4, maxDmg: 9, level: 3, image: "assets/monsters/swamp_spider.jpg" }
         ]
     },
     {
         id: 'volcano',
         name: '🌋 Вулкан',
-        image: 'volcano.jpg',
+        image: 'assets/locations/volcano.jpg',
         minLevel: 6,
         maxLevel: 10,
         monsters: [
-            { name: "🔥 Вогняний Елементаль", hp: 150, minDmg: 8, maxDmg: 16, level: 6, image: "fire_elemental.jpg" },
-            { name: "🐉 Вогняний Дракон", hp: 220, minDmg: 12, maxDmg: 24, level: 9, image: "fire_dragon.jpg" },
-            { name: "🗿 Лавовий Голем", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "lava_golem.jpg" },
-            { name: "🦂 Вогняний Скорпіон", hp: 130, minDmg: 7, maxDmg: 14, level: 6, image: "fire_scorpion.jpg" },
-            { name: "👹 Демон Вогню", hp: 200, minDmg: 11, maxDmg: 22, level: 8, image: "fire_demon.jpg" }
+            { name: "🔥 Вогняний Елементаль", hp: 150, minDmg: 8, maxDmg: 16, level: 6, image: "assets/monsters/fire_elemental.jpg" },
+            { name: "🐉 Вогняний Дракон", hp: 220, minDmg: 12, maxDmg: 24, level: 9, image: "assets/monsters/fire_dragon.jpg" },
+            { name: "🗿 Лавовий Голем", hp: 180, minDmg: 9, maxDmg: 18, level: 7, image: "assets/monsters/lava_golem.jpg" },
+            { name: "🦂 Вогняний Скорпіон", hp: 130, minDmg: 7, maxDmg: 14, level: 6, image: "assets/monsters/fire_scorpion.jpg" },
+            { name: "👹 Демон Вогню", hp: 200, minDmg: 11, maxDmg: 22, level: 8, image: "assets/monsters/fire_demon.jpg" }
         ]
     }
 ];
