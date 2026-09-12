@@ -30,11 +30,11 @@ const pool = new Pool({
 // ==========================================
 const transporter = nodemailer.createTransport({
     host: 'in-v3.mailjet.com',
-    port: 587,
-    secure: false, // true для 465, false для 587
+    port: 2525,              // ← було 587
+    secure: false,
     auth: {
-        user: process.env.MJ_APIKEY_PUBLIC,   // API Key з Mailjet
-        pass: process.env.MJ_APIKEY_PRIVATE    // Secret Key з Mailjet
+        user: process.env.MJ_APIKEY_PUBLIC,
+        pass: process.env.MJ_APIKEY_PRIVATE
     }
 });
 
