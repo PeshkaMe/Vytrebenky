@@ -54,6 +54,16 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `);
+
+        // Міграція: додаємо нові стовпці, якщо їх немає (для старих таблиць)
+        await pool.query(`
+            ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+                ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6),
+                ADD COLUMN IF NOT EXISTS code_expires_at TIMESTAMP;
+        `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS player_data (
                 username VARCHAR(16) PRIMARY KEY REFERENCES users(username) ON DELETE CASCADE,
@@ -61,6 +71,7 @@ async function initDB() {
                 updated_at TIMESTAMP DEFAULT NOW()
             );
         `);
+
         console.log('✅ База даних готова');
     } catch (err) {
         console.error('❌ Помилка ініціалізації БД:', err);
