@@ -34,11 +34,9 @@ socket.on('auth_success', (res) => {
     currentUser = res.username;
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
 
-    // Якщо email НЕ підтверджено
     if (res.verified === false) {
         pendingUsername = res.username;
         pendingUserData = res.data;
-        
         document.getElementById('auth-modal').classList.add('hidden');
         document.getElementById('verify-modal').classList.remove('hidden');
         document.getElementById('verify-error').textContent = '';
@@ -47,7 +45,10 @@ socket.on('auth_success', (res) => {
         return;
     }
 
-    // Якщо все ок — заходимо в гру
+    document.getElementById('verify-modal').classList.add('hidden');
+    document.getElementById('verify-error').textContent = '';
+    document.getElementById('verify-code').value = '';
+
     player = res.data;
     if (!player.theme) player.theme = 'original';
     applyTheme(player.theme);
@@ -78,16 +79,6 @@ socket.on('auth_error', (errorMsg) => {
     }
 });
 
-socket.on('get_my_email', async ({ username }) => {
-    try {
-        const result = await pool.query('SELECT email FROM users WHERE username = $1', [username]);
-        socket.emit('my_email', { email: result.rows[0]?.email || 'не вказано' });
-    } catch (err) {
-        console.error('Помилка отримання email:', err);
-        socket.emit('my_email', { email: 'помилка' });
-    }
-});
-
 // --- Скидання паролю ---
 socket.on('reset_code_sent', (data) => {
     resetUsername = data.username;
@@ -113,6 +104,12 @@ socket.on('email_change_success', (data) => {
     addLog(data.message, "clear");
     alert(data.message);
     closeChangeEmailModal();
+});
+
+// --- Отримання email ---
+socket.on('my_email', (data) => {
+    const el = document.getElementById('current-email-display');
+    if (el) el.textContent = `Поточний email: ${data.email}`;
 });
 
 function sendFakeChatMessage() {
