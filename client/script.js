@@ -18,11 +18,10 @@ socket.on('player_loaded', (savedPlayer) => {
         }
         const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
         setCurrentLocation(loc);
-        closeAuthModal();   // ✅ закриваємо ТІЛЬКИ тут
+        closeAuthModal();
         updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
-        // ❌ Сервер не знайшов гравця — показуємо модалку входу
         addLog("Акаунт не знайдено. Увійдіть або зареєструйтесь.", "danger");
         currentUser = null;
         player = null;
@@ -34,6 +33,20 @@ socket.on('player_loaded', (savedPlayer) => {
 socket.on('auth_success', (res) => {
     currentUser = res.username;
     localStorage.setItem('vanilla_rpg_currentUser', currentUser);
+
+    // Якщо email НЕ підтверджено
+    if (res.verified === false) {
+        pendingUsername = res.username;
+        pendingUserData = res.data;
+        document.getElementById('auth-modal').classList.add('hidden');
+        document.getElementById('verify-modal').classList.remove('hidden');
+        document.getElementById('verify-error').textContent = '';
+        document.getElementById('verify-code').value = '';
+        addLog(res.message, "clear");
+        return;
+    }
+
+    // Якщо все ок — заходимо в гру
     player = res.data;
     if (!player.theme) player.theme = 'original';
     applyTheme(player.theme);
@@ -48,8 +61,16 @@ socket.on('auth_success', (res) => {
 });
 
 socket.on('auth_error', (errorMsg) => {
-    const errorElem = document.getElementById('auth-error');
-    if (errorElem) errorElem.textContent = errorMsg;
+    const verifyModal = document.getElementById('verify-modal');
+    const authError = document.getElementById('auth-error');
+    const verifyError = document.getElementById('verify-error');
+
+    // Якщо відкрита модалка верифікації — показуємо там
+    if (verifyModal && !verifyModal.classList.contains('hidden')) {
+        if (verifyError) verifyError.textContent = errorMsg;
+    } else {
+        if (authError) authError.textContent = errorMsg;
+    }
 });
 
 function sendFakeChatMessage() {
@@ -391,6 +412,8 @@ const DAILY_QUESTS = [
 // 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
+let pendingUsername = null;
+let pendingUserData = null;
 let player = null;
 let currentLocation = LOCATIONS[0];
 
@@ -432,6 +455,7 @@ function savePlayerData() {
 
 function openAuthModal() {
     document.getElementById('auth-modal').classList.remove('hidden');
+    document.getElementById('verify-modal').classList.add('hidden'); // ← додай
     document.getElementById('main-game-wrapper').classList.add('hidden');
     document.getElementById('auth-error').textContent = '';
     switchAuthTab('login');
@@ -472,15 +496,13 @@ function updateSubclassDropdown() {
 function register() {
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
     const errEl = document.getElementById('auth-error');
 
-    // Перевірка на порожні поля
     if (!username || !password) {
         errEl.textContent = 'Заповніть всі поля';
         return;
     }
-
-    // Валідація ніка
     if (username.length < 3) {
         errEl.textContent = 'Нік має містити мінімум 3 символи';
         return;
@@ -493,18 +515,18 @@ function register() {
         errEl.textContent = 'Нік може містити лише букви, цифри та _';
         return;
     }
-
-    // Валідація паролю
     if (password.length < 6) {
         errEl.textContent = 'Пароль має містити мінімум 6 символів';
         return;
     }
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        errEl.textContent = 'Введіть коректний email';
+        return;
+    }
 
-    // Очищаємо попередні помилки
     errEl.textContent = '';
 
     const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
-
     const newPlayerData = {
         name: username,
         heroClass: document.getElementById('reg-class').value,
@@ -530,6 +552,7 @@ function register() {
     socket.emit('register', {
         username: username,
         password: password,
+        email: email,
         initialData: newPlayerData
     });
 }
@@ -562,6 +585,23 @@ function logout() {
         openAuthModal();
         addLog('Ви вийшли з акаунта.', 'default');
     }
+}
+
+function submitVerificationCode() {
+    const code = document.getElementById('verify-code').value.trim();
+    const errEl = document.getElementById('verify-error');
+    if (!code || code.length !== 6) {
+        errEl.textContent = 'Введіть 6-значний код';
+        return;
+    }
+    errEl.textContent = 'Перевірка...';
+    socket.emit('verify_code', { username: pendingUsername, code: code });
+}
+
+function resendCode() {
+    const errEl = document.getElementById('verify-error');
+    errEl.textContent = 'Надсилаємо новий код...';
+    socket.emit('resend_code', { username: pendingUsername });
 }
 
 // ==========================================

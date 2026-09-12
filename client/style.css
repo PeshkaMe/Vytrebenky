@@ -8,6 +8,12 @@ body {
     transition: background 0.3s, color 0.3s;
 }
 
+#verify-code {
+    width: 60%;
+    font-family: monospace;
+    font-weight: bold;
+}
+
 /* ==========================================
    ТЕМАТИЧНІ СТИЛІ (THEMES)
    ========================================== */

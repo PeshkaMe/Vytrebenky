@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
@@ -16,14 +18,29 @@ const io = new Server(server, {
 });
 
 // ==========================================
-// ПІДКЛЮЧЕННЯ ДО NEON (PostgreSQL)
+// ПІДКЛЮЧЕННЯ ДО NEON
 // ==========================================
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Neon вимагає SSL
+    ssl: { rejectUnauthorized: false }
 });
 
-// Ініціалізація таблиць при старті
+// ==========================================
+// НАЛАШТУВАННЯ NODEMAILER (Mailjet SMTP)
+// ==========================================
+const transporter = nodemailer.createTransport({
+    host: 'in-v3.mailjet.com',
+    port: 587,
+    secure: false, // true для 465, false для 587
+    auth: {
+        user: process.env.MJ_APIKEY_PUBLIC,   // API Key з Mailjet
+        pass: process.env.MJ_APIKEY_PRIVATE    // Secret Key з Mailjet
+    }
+});
+
+// ==========================================
+// ІНІЦІАЛІЗАЦІЯ ТАБЛИЦЬ
+// ==========================================
 async function initDB() {
     try {
         await pool.query(`
@@ -32,6 +49,8 @@ async function initDB() {
                 password_hash TEXT NOT NULL,
                 email VARCHAR(255),
                 email_verified BOOLEAN DEFAULT FALSE,
+                verification_code VARCHAR(6),
+                code_expires_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT NOW()
             );
         `);
@@ -57,8 +76,14 @@ function validateCredentials(username, password) {
     if (username.length < 3 || username.length > 16) return 'Нік має бути від 3 до 16 символів';
     if (!/^[a-zA-Zа-яА-Я0-9_]+$/.test(username)) return 'Нік може містити лише букви, цифри та _';
     if (password.length < 6) return 'Пароль має бути мінімум 6 символів';
-    if (password.length > 72) return 'Пароль занадто довгий';
     return null;
+}
+
+// ==========================================
+// ГЕНЕРАЦІЯ КОДУ
+// ==========================================
+function generateCode() {
+    return String(Math.floor(100000 + Math.random() * 900000)); // 6 цифр
 }
 
 // ==========================================
@@ -69,16 +94,16 @@ io.on('connection', (socket) => {
 
     // ---------- ЧАТ ----------
     socket.on('send_chat_message', (data) => {
-        io.emit('chat_message', {
-            user: data.user,
-            text: data.text
-        });
+        io.emit('chat_message', { user: data.user, text: data.text });
     });
 
-    // ---------- РЕЄСТРАЦІЯ ----------
-    socket.on('register', async ({ username, password, initialData }) => {
+    // ---------- РЕЄСТРАЦІЯ (з email) ----------
+    socket.on('register', async ({ username, password, email, initialData }) => {
         const err = validateCredentials(username, password);
         if (err) return socket.emit('auth_error', err);
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+            return socket.emit('auth_error', 'Введіть коректний email');
+        }
 
         try {
             const existing = await pool.query(
@@ -90,22 +115,33 @@ io.on('connection', (socket) => {
             }
 
             const hash = await bcrypt.hash(password, 10);
+            const code = generateCode();
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 хв
 
             await pool.query(
-                'INSERT INTO users (username, password_hash) VALUES ($1, $2)',
-                [username, hash]
+                `INSERT INTO users (username, password_hash, email, verification_code, code_expires_at, email_verified)
+                 VALUES ($1, $2, $3, $4, $5, FALSE)`,
+                [username, hash, email, code, expiresAt]
             );
             await pool.query(
                 'INSERT INTO player_data (username, data) VALUES ($1, $2)',
                 [username, JSON.stringify(initialData)]
             );
 
+            // Надсилаємо лист
+            await transporter.sendMail({
+                from: `"Витрибенька" <${process.env.MJ_SENDER_EMAIL}>`,
+                to: email,
+                subject: 'Код підтвердження',
+                html: `<h2>Ваш код: ${code}</h2><p>Введіть його в грі протягом 15 хвилин.</p>`
+            });
+
             socket.emit('auth_success', {
                 username: username,
                 data: initialData,
-                message: `Вітаємо, ${username}! Акаунт успішно створено.`
+                verified: false,
+                message: `Код підтвердження надіслано на ${email}. Введіть його.`
             });
-            console.log(`✅ Новий акаунт: ${username}`);
         } catch (err) {
             console.error('Помилка реєстрації:', err);
             socket.emit('auth_error', 'Помилка сервера при реєстрації');
@@ -119,7 +155,7 @@ io.on('connection', (socket) => {
 
         try {
             const result = await pool.query(
-                'SELECT username, password_hash FROM users WHERE LOWER(username) = LOWER($1)',
+                'SELECT username, password_hash, email_verified FROM users WHERE LOWER(username) = LOWER($1)',
                 [username]
             );
             if (result.rows.length === 0) {
@@ -132,6 +168,31 @@ io.on('connection', (socket) => {
                 return socket.emit('auth_error', 'Невірний логін або пароль!');
             }
 
+            // Якщо email не підтверджено — надсилаємо новий код
+            if (!user.email_verified) {
+                const code = generateCode();
+                const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+                await pool.query(
+                    'UPDATE users SET verification_code = $1, code_expires_at = $2 WHERE username = $3',
+                    [code, expiresAt, user.username]
+                );
+                // (потрібно отримати email, але він у нас є; надсилаємо)
+                const emailResult = await pool.query('SELECT email FROM users WHERE username = $1', [user.username]);
+                const email = emailResult.rows[0].email;
+                await transporter.sendMail({
+                    from: `"Витрибенька" <${process.env.MJ_SENDER_EMAIL}>`,
+                    to: email,
+                    subject: 'Код підтвердження',
+                    html: `<h2>Ваш код: ${code}</h2><p>Введіть його в грі протягом 15 хвилин.</p>`
+                });
+                return socket.emit('auth_success', {
+                    username: user.username,
+                    data: null,
+                    verified: false,
+                    message: `Акаунт не підтверджено. Новий код надіслано на ${email}.`
+                });
+            }
+
             const dataResult = await pool.query(
                 'SELECT data FROM player_data WHERE username = $1',
                 [user.username]
@@ -141,27 +202,89 @@ io.on('connection', (socket) => {
             socket.emit('auth_success', {
                 username: user.username,
                 data: data,
+                verified: true,
                 message: `З поверненням, ${user.username}!`
             });
-            console.log(`✅ Вхід: ${user.username}`);
         } catch (err) {
             console.error('Помилка входу:', err);
             socket.emit('auth_error', 'Помилка сервера при вході');
         }
     });
 
-    // ---------- ЗАВАНТАЖЕННЯ ГРАВЦЯ ----------
-    socket.on('load_player', async (playerName) => {
-        if (!playerName) return socket.emit('player_loaded', null);
+    // ---------- ПІДТВЕРДЖЕННЯ КОДУ ----------
+    socket.on('verify_code', async ({ username, code }) => {
         try {
             const result = await pool.query(
-                'SELECT data FROM player_data WHERE username = $1',
-                [playerName]
+                'SELECT verification_code, code_expires_at FROM users WHERE username = $1',
+                [username]
             );
-            socket.emit('player_loaded', result.rows[0]?.data || null);
+            if (result.rows.length === 0) {
+                return socket.emit('auth_error', 'Користувача не знайдено');
+            }
+            const { verification_code, code_expires_at } = result.rows[0];
+            if (!verification_code || verification_code !== code) {
+                return socket.emit('auth_error', 'Невірний код');
+            }
+            if (new Date() > new Date(code_expires_at)) {
+                return socket.emit('auth_error', 'Код прострочено. Запросіть новий.');
+            }
+
+            await pool.query(
+                'UPDATE users SET email_verified = TRUE, verification_code = NULL, code_expires_at = NULL WHERE username = $1',
+                [username]
+            );
+
+            // Завантажуємо дані гравця
+            const dataResult = await pool.query(
+                'SELECT data FROM player_data WHERE username = $1',
+                [username]
+            );
+            const data = dataResult.rows[0]?.data || null;
+
+            socket.emit('auth_success', {
+                username: username,
+                data: data,
+                verified: true,
+                message: 'Email успішно підтверджено!'
+            });
         } catch (err) {
-            console.error('Помилка завантаження:', err);
-            socket.emit('player_loaded', null);
+            console.error('Помилка верифікації:', err);
+            socket.emit('auth_error', 'Помилка сервера при підтвердженні');
+        }
+    });
+
+        // ---------- ПОВТОРНА ВІДПРАВКА КОДУ ----------
+    socket.on('resend_code', async ({ username }) => {
+        try {
+            const result = await pool.query(
+                'SELECT email, email_verified FROM users WHERE username = $1',
+                [username]
+            );
+            if (result.rows.length === 0) {
+                return socket.emit('auth_error', 'Користувача не знайдено');
+            }
+            if (result.rows[0].email_verified) {
+                return socket.emit('auth_error', 'Email вже підтверджено');
+            }
+
+            const code = generateCode();
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+            await pool.query(
+                'UPDATE users SET verification_code = $1, code_expires_at = $2 WHERE username = $3',
+                [code, expiresAt, username]
+            );
+
+            await transporter.sendMail({
+                from: `"Витрибенька" <${process.env.MJ_SENDER_EMAIL}>`,
+                to: result.rows[0].email,
+                subject: 'Новий код підтвердження',
+                html: `<h2>Ваш код: ${code}</h2><p>Введіть його в грі протягом 15 хвилин.</p>`
+            });
+
+            socket.emit('auth_error', 'Новий код надіслано на вашу пошту');
+        } catch (err) {
+            console.error('Помилка повторної відправки:', err);
+            socket.emit('auth_error', 'Помилка сервера при відправці коду');
         }
     });
 
@@ -178,6 +301,21 @@ io.on('connection', (socket) => {
             );
         } catch (err) {
             console.error('Помилка збереження:', err);
+        }
+    });
+
+    // ---------- ЗАВАНТАЖЕННЯ ГРАВЦЯ ----------
+    socket.on('load_player', async (playerName) => {
+        if (!playerName) return socket.emit('player_loaded', null);
+        try {
+            const result = await pool.query(
+                'SELECT data FROM player_data WHERE username = $1',
+                [playerName]
+            );
+            socket.emit('player_loaded', result.rows[0]?.data || null);
+        } catch (err) {
+            console.error('Помилка завантаження:', err);
+            socket.emit('player_loaded', null);
         }
     });
 
