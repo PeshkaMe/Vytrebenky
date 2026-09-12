@@ -463,6 +463,7 @@ function openAuthModal() {
 
 function closeAuthModal() { 
     document.getElementById('auth-modal').classList.add('hidden'); 
+    document.getElementById('verify-modal').classList.add('hidden');   // ← додай це
     document.getElementById('main-game-wrapper').classList.remove('hidden');
     if (player) {
         const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
