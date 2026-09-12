@@ -18,10 +18,16 @@ socket.on('player_loaded', (savedPlayer) => {
         }
         const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
         setCurrentLocation(loc);
+        closeAuthModal();   // ✅ закриваємо ТІЛЬКИ тут
         updateUI();
         addLog("Прогрес успішно завантажено з сервера!", "green");
     } else {
-        addLog("Не вдалося завантажити дані персонажа.", "danger");
+        // ❌ Сервер не знайшов гравця — показуємо модалку входу
+        addLog("Акаунт не знайдено. Увійдіть або зареєструйтесь.", "danger");
+        currentUser = null;
+        player = null;
+        localStorage.removeItem('vanilla_rpg_currentUser');
+        openAuthModal();
     }
 });
 
@@ -406,9 +412,10 @@ function applyTheme(themeName) {
 function loadPlayer() {
     const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
     applyTheme(localTheme);
+
     if (currentUser) {
+        // Не закриваємо модалку одразу — чекаємо відповіді сервера
         socket.emit('load_player', currentUser);
-        closeAuthModal();
     } else {
         openAuthModal();
     }
@@ -465,11 +472,39 @@ function updateSubclassDropdown() {
 function register() {
     const username = document.getElementById('reg-username').value.trim();
     const password = document.getElementById('reg-password').value.trim();
-    if (!username || !password) { 
-        document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
-        return; 
+    const errEl = document.getElementById('auth-error');
+
+    // Перевірка на порожні поля
+    if (!username || !password) {
+        errEl.textContent = 'Заповніть всі поля';
+        return;
     }
+
+    // Валідація ніка
+    if (username.length < 3) {
+        errEl.textContent = 'Нік має містити мінімум 3 символи';
+        return;
+    }
+    if (username.length > 16) {
+        errEl.textContent = 'Нік має містити максимум 16 символів';
+        return;
+    }
+    if (!/^[a-zA-Zа-яА-Я0-9_]+$/.test(username)) {
+        errEl.textContent = 'Нік може містити лише букви, цифри та _';
+        return;
+    }
+
+    // Валідація паролю
+    if (password.length < 6) {
+        errEl.textContent = 'Пароль має містити мінімум 6 символів';
+        return;
+    }
+
+    // Очищаємо попередні помилки
+    errEl.textContent = '';
+
     const localTheme = localStorage.getItem('vanilla_rpg_theme') || 'original';
+
     const newPlayerData = {
         name: username,
         heroClass: document.getElementById('reg-class').value,
@@ -491,24 +526,32 @@ function register() {
             lastReset: null
         }
     };
+
     socket.emit('register', {
         username: username,
         password: password,
         initialData: newPlayerData
     });
 }
-
 function login() {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
-    if (!username || !password) { 
-        document.getElementById('auth-error').textContent = 'Заповніть всі поля'; 
-        return; 
+    const errEl = document.getElementById('auth-error');
+
+    if (!username || !password) {
+        errEl.textContent = 'Заповніть всі поля';
+        return;
     }
-    socket.emit('login', {
-        username: username,
-        password: password
-    });
+    if (username.length < 3) {
+        errEl.textContent = 'Нік має містити мінімум 3 символи';
+        return;
+    }
+    if (password.length < 6) {
+        errEl.textContent = 'Пароль має містити мінімум 6 символів';
+        return;
+    }
+
+    socket.emit('login', { username, password });
 }
 
 function logout() {
