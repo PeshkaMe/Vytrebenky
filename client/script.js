@@ -38,6 +38,7 @@ socket.on('auth_success', (res) => {
     if (res.verified === false) {
         pendingUsername = res.username;
         pendingUserData = res.data;
+        
         document.getElementById('auth-modal').classList.add('hidden');
         document.getElementById('verify-modal').classList.remove('hidden');
         document.getElementById('verify-error').textContent = '';
@@ -62,15 +63,56 @@ socket.on('auth_success', (res) => {
 
 socket.on('auth_error', (errorMsg) => {
     const verifyModal = document.getElementById('verify-modal');
+    const resetModal = document.getElementById('reset-modal');
+    const changeEmailModal = document.getElementById('change-email-modal');
     const authError = document.getElementById('auth-error');
-    const verifyError = document.getElementById('verify-error');
 
-    // Якщо відкрита модалка верифікації — показуємо там
     if (verifyModal && !verifyModal.classList.contains('hidden')) {
-        if (verifyError) verifyError.textContent = errorMsg;
-    } else {
-        if (authError) authError.textContent = errorMsg;
+        document.getElementById('verify-error').textContent = errorMsg;
+    } else if (resetModal && !resetModal.classList.contains('hidden')) {
+        document.getElementById('reset-error').textContent = errorMsg;
+    } else if (changeEmailModal && !changeEmailModal.classList.contains('hidden')) {
+        document.getElementById('change-email-error').textContent = errorMsg;
+    } else if (authError) {
+        authError.textContent = errorMsg;
     }
+});
+
+socket.on('get_my_email', async ({ username }) => {
+    try {
+        const result = await pool.query('SELECT email FROM users WHERE username = $1', [username]);
+        socket.emit('my_email', { email: result.rows[0]?.email || 'не вказано' });
+    } catch (err) {
+        console.error('Помилка отримання email:', err);
+        socket.emit('my_email', { email: 'помилка' });
+    }
+});
+
+// --- Скидання паролю ---
+socket.on('reset_code_sent', (data) => {
+    resetUsername = data.username;
+    document.getElementById('reset-step-1').classList.add('hidden');
+    document.getElementById('reset-step-2').classList.remove('hidden');
+    document.getElementById('reset-error').textContent = data.message || 'Код надіслано';
+});
+
+socket.on('password_reset_success', (data) => {
+    addLog(data.message, "clear");
+    alert(data.message);
+    closeResetModal();
+});
+
+// --- Зміна email ---
+socket.on('email_change_code_sent', (data) => {
+    document.getElementById('change-email-step-1').classList.add('hidden');
+    document.getElementById('change-email-step-2').classList.remove('hidden');
+    document.getElementById('change-email-error').textContent = data.message || 'Код надіслано';
+});
+
+socket.on('email_change_success', (data) => {
+    addLog(data.message, "clear");
+    alert(data.message);
+    closeChangeEmailModal();
 });
 
 function sendFakeChatMessage() {
@@ -412,6 +454,8 @@ const DAILY_QUESTS = [
 // 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
+let resetUsername = null;        // логін для скидання паролю
+let changeEmailUsername = null;  // логін для зміни email
 let pendingUsername = null;
 let pendingUserData = null;
 let player = null;
@@ -603,6 +647,106 @@ function resendCode() {
     const errEl = document.getElementById('verify-error');
     errEl.textContent = 'Надсилаємо новий код...';
     socket.emit('resend_code', { username: pendingUsername });
+}
+
+// ============ СКИДАННЯ ПАРОЛЮ ============
+function openResetModal() {
+    document.getElementById('auth-modal').classList.add('hidden');
+    document.getElementById('reset-modal').classList.remove('hidden');
+    document.getElementById('reset-step-1').classList.remove('hidden');
+    document.getElementById('reset-step-2').classList.add('hidden');
+    document.getElementById('reset-error').textContent = '';
+    document.getElementById('reset-identifier').value = '';
+    document.getElementById('reset-code').value = '';
+    document.getElementById('reset-new-password').value = '';
+}
+
+function closeResetModal() {
+    document.getElementById('reset-modal').classList.add('hidden');
+    document.getElementById('auth-modal').classList.remove('hidden');
+    resetUsername = null;
+}
+
+function requestPasswordReset() {
+    const identifier = document.getElementById('reset-identifier').value.trim();
+    const errEl = document.getElementById('reset-error');
+    if (!identifier) {
+        errEl.textContent = 'Введіть логін або email';
+        return;
+    }
+    errEl.textContent = 'Надсилаємо код...';
+    socket.emit('request_password_reset', { identifier });
+}
+
+function submitPasswordReset() {
+    const code = document.getElementById('reset-code').value.trim();
+    const newPassword = document.getElementById('reset-new-password').value.trim();
+    const errEl = document.getElementById('reset-error');
+
+    if (!code || code.length !== 6) {
+        errEl.textContent = 'Введіть 6-значний код';
+        return;
+    }
+    if (newPassword.length < 6) {
+        errEl.textContent = 'Пароль має бути мінімум 6 символів';
+        return;
+    }
+
+    errEl.textContent = 'Змінюємо пароль...';
+    socket.emit('reset_password', {
+        username: resetUsername,
+        code: code,
+        newPassword: newPassword
+    });
+}
+
+// ============ ЗМІНА EMAIL ============
+function openChangeEmailModal() {
+    document.getElementById('change-email-modal').classList.remove('hidden');
+    document.getElementById('change-email-step-1').classList.remove('hidden');
+    document.getElementById('change-email-step-2').classList.add('hidden');
+    document.getElementById('change-email-error').textContent = '';
+    document.getElementById('change-email-password').value = '';
+    document.getElementById('change-email-new').value = '';
+    document.getElementById('change-email-code').value = '';
+    changeEmailUsername = player ? player.name : null;
+}
+
+function closeChangeEmailModal() {
+    document.getElementById('change-email-modal').classList.add('hidden');
+    changeEmailUsername = null;
+}
+
+function requestEmailChange() {
+    const password = document.getElementById('change-email-password').value.trim();
+    const newEmail = document.getElementById('change-email-new').value.trim();
+    const errEl = document.getElementById('change-email-error');
+
+    if (!password || !newEmail) {
+        errEl.textContent = 'Заповніть всі поля';
+        return;
+    }
+    errEl.textContent = 'Перевіряємо...';
+    socket.emit('request_email_change', {
+        username: changeEmailUsername,
+        password: password,
+        newEmail: newEmail
+    });
+}
+
+function submitEmailChange() {
+    const code = document.getElementById('change-email-code').value.trim();
+    const errEl = document.getElementById('change-email-error');
+
+    if (!code || code.length !== 6) {
+        errEl.textContent = 'Введіть 6-значний код';
+        return;
+    }
+    errEl.textContent = 'Підтверджуємо...';
+    socket.emit('confirm_email_change', {
+        username: changeEmailUsername,
+        code: code
+    });
 }
 
 // ==========================================
@@ -799,8 +943,17 @@ function switchTab(tab) {
     if (tab === 'shop') renderShop();
     if (tab === 'quests') renderQuests();
     if (tab === 'blacksmith') renderBlacksmith();
+    if (tab === 'settings') {
+        if (player) {
+            socket.emit('get_my_email', { username: player.name });
+        }
+    }
 }
 
+socket.on('my_email', (data) => {
+    const el = document.getElementById('current-email-display');
+    if (el) el.textContent = `Поточний email: ${data.email}`;
+});
 // ==========================================
 // 6. СИСТЕМА ПОДОРОЖЕЙ І БІЙ
 // ==========================================

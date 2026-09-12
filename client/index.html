@@ -19,6 +19,7 @@
                 <input type="text" id="login-username" placeholder="Логін">
                 <input type="password" id="login-password" placeholder="Пароль">
                 <button onclick="login()" class="pay-btn">Увійти</button>
+                <a href="#" onclick="openResetModal(); return false;" style="color: #d4af37; font-size: 12px; text-decoration: underline; margin-top: 5px;">Забули пароль?</a>
             </div>
             <div id="auth-form-register" class="auth-form hidden">
                 <input type="text" id="reg-username" placeholder="Придумайте логін">
@@ -47,6 +48,64 @@
                 <button onclick="resendCode()" class="action-btn" style="background:#444; color:#fff;">Надіслати знову</button>
             </div>
             <p id="verify-error" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+        <!-- Модалка скидання паролю -->
+    <div id="reset-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h3>🔑 Скидання паролю</h3>
+            
+            <!-- Крок 1: введення логіна/email -->
+            <div id="reset-step-1">
+                <p style="font-size: 13px;">Введіть логін або email, прив'язаний до акаунта:</p>
+                <input type="text" id="reset-identifier" placeholder="Логін або email">
+                <div class="modal-actions">
+                    <button onclick="requestPasswordReset()" class="pay-btn">Надіслати код</button>
+                    <button onclick="closeResetModal()" class="cancel-btn">Скасувати</button>
+                </div>
+            </div>
+
+            <!-- Крок 2: введення коду + нового паролю -->
+            <div id="reset-step-2" class="hidden">
+                <p style="font-size: 13px;">Введіть код з email та новий пароль:</p>
+                <input type="text" id="reset-code" maxlength="6" placeholder="000000" style="text-align:center; font-size: 20px; letter-spacing: 4px;">
+                <input type="password" id="reset-new-password" placeholder="Новий пароль (мін. 6 символів)">
+                <div class="modal-actions">
+                    <button onclick="submitPasswordReset()" class="pay-btn">Змінити пароль</button>
+                    <button onclick="closeResetModal()" class="cancel-btn">Скасувати</button>
+                </div>
+            </div>
+
+            <p id="reset-error" style="color: red; font-size: 12px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- Модалка зміни email -->
+    <div id="change-email-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h3>📧 Зміна email</h3>
+
+            <div id="change-email-step-1">
+                <p style="font-size: 13px;">Введіть пароль і новий email:</p>
+                <input type="password" id="change-email-password" placeholder="Поточний пароль">
+                <input type="email" id="change-email-new" placeholder="Новий email">
+                <div class="modal-actions">
+                    <button onclick="requestEmailChange()" class="pay-btn">Надіслати код</button>
+                    <button onclick="closeChangeEmailModal()" class="cancel-btn">Скасувати</button>
+                </div>
+            </div>
+
+            <div id="change-email-step-2" class="hidden">
+                <p style="font-size: 13px;">Введіть код з нового email:</p>
+                <input type="text" id="change-email-code" maxlength="6" placeholder="000000" style="text-align:center; font-size: 20px; letter-spacing: 4px;">
+                <div class="modal-actions">
+                    <button onclick="submitEmailChange()" class="pay-btn">Підтвердити</button>
+                    <button onclick="closeChangeEmailModal()" class="cancel-btn">Скасувати</button>
+                </div>
+            </div>
+
+            <p id="change-email-error" style="color: red; font-size: 12px; margin-top: 10px;"></p>
         </div>
     </div>
 
@@ -179,6 +238,11 @@
                         <label><input type="radio" name="theme-choice" value="light" onchange="changeTheme(this.value)"> ☀️ Біла (Світла)</label>
                         <label><input type="radio" name="theme-choice" value="dark" onchange="changeTheme(this.value)"> 🌙 Темна</label>
                     </div>
+                </div>
+                <div class="settings-card">
+                    <h4>📧 Email</h4>
+                    <p id="current-email-display" style="font-size: 13px;">Завантаження...</p>
+                    <button onclick="openChangeEmailModal()" class="reset-btn" style="background: #3182ce;">Змінити email</button>
                 </div>
                 <div class="settings-card danger-zone">
                     <h4>⚠️ Скидання прогресу</h4>
