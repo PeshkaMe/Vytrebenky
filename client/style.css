@@ -949,3 +949,85 @@ body.theme-dark #location-list .location-option:hover { background: #2d2d2d; }
         height: 30px;
     }
 }
+/* ==========================================
+   ТОП ГРАВЦІВ
+   ========================================== */
+   .top-tabs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 15px 0;
+    flex-wrap: wrap;
+}
+
+.top-tab-btn {
+    padding: 10px 20px;
+    background: #444;
+    color: #fff;
+    border: 2px solid #666;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 14px;
+    transition: transform 0.1s;
+}
+.top-tab-btn:hover { transform: scale(1.05); }
+.top-tab-btn.active {
+    background: #d4af37;
+    color: #000;
+    border-color: #aa8000;
+}
+
+.top-list {
+    max-width: 500px;
+    margin: 20px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.top-player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 2px solid #444;
+    transition: transform 0.15s;
+}
+.top-player-row:hover { transform: scale(1.02); }
+
+body.theme-original .top-player-row { background: #f0f0f0; }
+body.theme-light .top-player-row { background: #ffffff; border-color: #cbd5e0; }
+body.theme-dark .top-player-row { background: #1e1e1e; border-color: #333; }
+
+.top-player-row.rank-1 {
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+.top-player-row.rank-2 {
+    border-color: #c0c0c0;
+    box-shadow: 0 0 8px rgba(192, 192, 192, 0.3);
+}
+.top-player-row.rank-3 {
+    border-color: #cd7f32;
+    box-shadow: 0 0 8px rgba(205, 127, 50, 0.3);
+}
+
+.top-rank {
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 40px;
+    text-align: center;
+}
+.top-name {
+    flex: 1;
+    font-weight: bold;
+    font-size: 15px;
+}
+.top-value {
+    font-weight: bold;
+    color: #d4af37;
+    font-size: 14px;
+}

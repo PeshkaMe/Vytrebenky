@@ -8,7 +8,28 @@ socket.on('chat_message', (data) => {
     addLog(`[${data.user}]: ${data.text}`, 'clear');
 });
 
+// ⚠️ ВИПРАВЛЕНО: перевірка __unverified (захист від обходу верифікації через localStorage)
 socket.on('player_loaded', (savedPlayer) => {
+    if (savedPlayer && savedPlayer.__unverified) {
+        console.log('⚠️ Спроба входу без верифікації — показуємо модалку');
+        
+        pendingUsername = savedPlayer.username;
+        pendingUserData = null;
+        
+        currentUser = null;
+        player = null;
+        localStorage.removeItem('vanilla_rpg_currentUser');
+        
+        document.getElementById('auth-modal').classList.add('hidden');
+        document.getElementById('verify-modal').classList.remove('hidden');
+        document.getElementById('verify-error').textContent = '';
+        document.getElementById('verify-code').value = '';
+        
+        socket.emit('resend_code', { username: pendingUsername });
+        addLog("Email не підтверджено. Новий код надіслано на пошту.", "danger");
+        return;
+    }
+
     if (savedPlayer) {
         player = savedPlayer;
         if (!player.theme) player.theme = 'original';
@@ -30,10 +51,8 @@ socket.on('player_loaded', (savedPlayer) => {
     }
 });
 
+// ⚠️ ВИПРАВЛЕНО: currentUser зберігається в localStorage ТІЛЬКИ після верифікації
 socket.on('auth_success', (res) => {
-    currentUser = res.username;
-    localStorage.setItem('vanilla_rpg_currentUser', currentUser);
-
     if (res.verified === false) {
         pendingUsername = res.username;
         pendingUserData = res.data;
@@ -42,8 +61,12 @@ socket.on('auth_success', (res) => {
         document.getElementById('verify-error').textContent = '';
         document.getElementById('verify-code').value = '';
         addLog(res.message, "clear");
-        return;
+        return; // ← НЕ зберігаємо currentUser в localStorage
     }
+
+    // Тільки після успішної верифікації
+    currentUser = res.username;
+    localStorage.setItem('vanilla_rpg_currentUser', currentUser);
 
     document.getElementById('verify-modal').classList.add('hidden');
     document.getElementById('verify-error').textContent = '';
@@ -451,8 +474,8 @@ const DAILY_QUESTS = [
 // 3. АВТОРИЗАЦІЯ ТА ПРОФІЛЬ
 // ==========================================
 let currentUser = localStorage.getItem('vanilla_rpg_currentUser') || null;
-let resetUsername = null;        // логін для скидання паролю
-let changeEmailUsername = null;  // логін для зміни email
+let resetUsername = null;
+let changeEmailUsername = null;
 let pendingUsername = null;
 let pendingUserData = null;
 let player = null;
@@ -478,7 +501,6 @@ function loadPlayer() {
     applyTheme(localTheme);
 
     if (currentUser) {
-        // Не закриваємо модалку одразу — чекаємо відповіді сервера
         socket.emit('load_player', currentUser);
     } else {
         openAuthModal();
@@ -496,7 +518,7 @@ function savePlayerData() {
 
 function openAuthModal() {
     document.getElementById('auth-modal').classList.remove('hidden');
-    document.getElementById('verify-modal').classList.add('hidden'); // ← додай
+    document.getElementById('verify-modal').classList.add('hidden');
     document.getElementById('main-game-wrapper').classList.add('hidden');
     document.getElementById('auth-error').textContent = '';
     switchAuthTab('login');
@@ -504,7 +526,7 @@ function openAuthModal() {
 
 function closeAuthModal() { 
     document.getElementById('auth-modal').classList.add('hidden'); 
-    document.getElementById('verify-modal').classList.add('hidden');   // ← додай це
+    document.getElementById('verify-modal').classList.add('hidden');
     document.getElementById('main-game-wrapper').classList.remove('hidden');
     if (player) {
         const loc = LOCATIONS.find(l => l.id === player.currentLocationId) || LOCATIONS[0];
@@ -576,6 +598,7 @@ function register() {
         gold: 5,
         xp: 0,
         level: 1,
+        totalKills: 0,
         theme: localTheme,
         currentLocationId: LOCATIONS[0].id,
         inventory: [],
@@ -598,6 +621,7 @@ function register() {
         initialData: newPlayerData
     });
 }
+
 function login() {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
@@ -931,12 +955,16 @@ function switchTab(tab) {
     document.getElementById('btn-quests').classList.toggle('active', tab === 'quests');
     document.getElementById('btn-blacksmith').classList.toggle('active', tab === 'blacksmith');
     document.getElementById('btn-settings').classList.toggle('active', tab === 'settings');
+    document.getElementById('btn-top').classList.toggle('active', tab === 'top'); // ← додано
+    
     document.getElementById('zone-arena').classList.toggle('hidden', tab !== 'arena');
     document.getElementById('zone-shop').classList.toggle('hidden', tab !== 'shop');
     document.getElementById('zone-guild').classList.toggle('hidden', tab !== 'guild');
     document.getElementById('zone-quests').classList.toggle('hidden', tab !== 'quests');
     document.getElementById('zone-blacksmith').classList.toggle('hidden', tab !== 'blacksmith');
     document.getElementById('zone-settings').classList.toggle('hidden', tab !== 'settings');
+    document.getElementById('zone-top').classList.toggle('hidden', tab !== 'top'); // ← додано
+    
     if (tab === 'shop') renderShop();
     if (tab === 'quests') renderQuests();
     if (tab === 'blacksmith') renderBlacksmith();
@@ -945,12 +973,11 @@ function switchTab(tab) {
             socket.emit('get_my_email', { username: player.name });
         }
     }
+    if (tab === 'top') {
+        loadTop('level'); // ← завантажуємо топ за рівнем
+    }
 }
 
-socket.on('my_email', (data) => {
-    const el = document.getElementById('current-email-display');
-    if (el) el.textContent = `Поточний email: ${data.email}`;
-});
 // ==========================================
 // 6. СИСТЕМА ПОДОРОЖЕЙ І БІЙ
 // ==========================================
@@ -1190,6 +1217,7 @@ function endBattle(victory) {
     playerBlocking = false;
     if (victory) {
         player.dailyQuests.kills = (player.dailyQuests.kills || 0) + 1;
+        player.totalKills = (player.totalKills || 0) + 1;
         checkDailyReset();
 
         const monster = currentMonster;
@@ -1443,6 +1471,71 @@ function renderQuestsIfActive() {
 function renderBlacksmithIfActive() {
     if (document.getElementById('zone-blacksmith') && !document.getElementById('zone-blacksmith').classList.contains('hidden')) renderBlacksmith();
 }
+
+// ==========================================
+// ТОП ГРАВЦІВ
+// ==========================================
+let currentTopCategory = 'level';
+
+function loadTop(category) {
+    currentTopCategory = category;
+    
+    // Оновлюємо активну кнопку
+    document.getElementById('top-btn-level').classList.toggle('active', category === 'level');
+    document.getElementById('top-btn-gold').classList.toggle('active', category === 'gold');
+    document.getElementById('top-btn-kills').classList.toggle('active', category === 'kills');
+    
+    // Показуємо "завантаження"
+    document.getElementById('top-list').innerHTML = '<p style="text-align: center; opacity: 0.6;">Завантаження...</p>';
+    
+    socket.emit('get_top_players', { category });
+}
+
+socket.on('top_players', (data) => {
+    // Ігноруємо, якщо це не поточна категорія
+    if (data.category !== currentTopCategory) return;
+    
+    const list = document.getElementById('top-list');
+    if (!list) return;
+    
+    if (data.error || !data.players || data.players.length === 0) {
+        list.innerHTML = '<p style="text-align: center; opacity: 0.6;">Немає даних</p>';
+        return;
+    }
+    
+    list.innerHTML = '';
+    
+    data.players.forEach((p, index) => {
+        const rank = index + 1;
+        const row = document.createElement('div');
+        row.className = `top-player-row rank-${rank <= 3 ? rank : 'n'}`;
+        
+        // Медаль для топ-3
+        let medal = `${rank}.`;
+        if (rank === 1) medal = '🥇';
+        else if (rank === 2) medal = '🥈';
+        else if (rank === 3) medal = '🥉';
+        
+        // Значення залежно від категорії
+        let value = '';
+        if (data.category === 'level') value = `[${p.level} рівень]`;
+        else if (data.category === 'gold') value = `💰 ${p.gold}`;
+        else if (data.category === 'kills') value = `⚔️ ${p.kills}`;
+        
+        // Підсвітка свого імені
+        const isMe = player && player.name === p.username;
+        
+        row.innerHTML = `
+            <div class="top-rank">${medal}</div>
+            <div class="top-name" style="${isMe ? 'color: #d4af37;' : ''}">
+                ${p.username}${isMe ? ' (ви)' : ''}
+            </div>
+            <div class="top-value">${value}</div>
+        `;
+        
+        list.appendChild(row);
+    });
+});
 
 function renderShop() {
     const grid = document.getElementById('shop-grid');

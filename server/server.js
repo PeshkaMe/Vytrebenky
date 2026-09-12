@@ -490,10 +490,26 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ---------- ЗАВАНТАЖЕННЯ ГРАВЦЯ ----------
+    // ---------- ЗАВАНТАЖЕННЯ ГРАВЦЯ (⚠️ з перевіркою верифікації) ----------
     socket.on('load_player', async (playerName) => {
         if (!playerName) return socket.emit('player_loaded', null);
         try {
+            // 1. Перевіряємо, чи існує гравець і чи підтверджено email
+            const userResult = await pool.query(
+                'SELECT email_verified FROM users WHERE username = $1',
+                [playerName]
+            );
+
+            if (userResult.rows.length === 0) {
+                return socket.emit('player_loaded', null);
+            }
+
+            if (!userResult.rows[0].email_verified) {
+                console.log(`⚠️ Вхід без верифікації: ${playerName}`);
+                return socket.emit('player_loaded', { __unverified: true, username: playerName });
+            }
+
+            // 2. Завантажуємо дані
             const result = await pool.query(
                 'SELECT data FROM player_data WHERE username = $1',
                 [playerName]
@@ -502,6 +518,35 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('Помилка завантаження:', err);
             socket.emit('player_loaded', null);
+        }
+    });
+
+    // ---------- ТОП ГРАВЦІВ ----------
+    socket.on('get_top_players', async ({ category }) => {
+        try {
+            // Захист від SQL-ін'єкцій
+            const allowed = {
+                level: 'level DESC, kills DESC',
+                gold: 'gold DESC, level DESC',
+                kills: 'kills DESC, level DESC'
+            };
+            const orderBy = allowed[category] || allowed.level;
+
+            const result = await pool.query(`
+                SELECT 
+                    username,
+                    COALESCE((data->>'level')::int, 1) as level,
+                    COALESCE((data->>'gold')::int, 0) as gold,
+                    COALESCE((data->>'totalKills')::int, 0) as kills
+                FROM player_data
+                ORDER BY ${orderBy}
+                LIMIT 20
+            `);
+
+            socket.emit('top_players', { category, players: result.rows });
+        } catch (err) {
+            console.error('Помилка топу гравців:', err);
+            socket.emit('top_players', { category, players: [], error: true });
         }
     });
 

@@ -127,6 +127,7 @@
                 <button class="nav-icon-btn" id="btn-guild" onclick="switchTab('guild')">📦 Інвентар</button>
                 <button class="nav-icon-btn" id="btn-quests" onclick="switchTab('quests')">📋 Завдання</button>
                 <button class="nav-icon-btn" id="btn-blacksmith" onclick="switchTab('blacksmith')">🔨 Коваль</button>
+                <button class="nav-icon-btn" id="btn-top" onclick="switchTab('top')">🏆 Топ</button>
                 <button class="nav-icon-btn" id="btn-settings" onclick="switchTab('settings')">⚙️ Опції</button>
             </div>
             <div class="economy-container">
@@ -183,6 +184,19 @@
                         <button class="skill-btn block-btn" onclick="skillBlock()">🛡️ Блок (10 SP)</button>
                     </div>
                     <div id="battle-skills-container" class="battle-skills"></div>
+                </div>
+            </div>
+
+            <!-- ТОП ГРАВЦІВ -->
+            <div id="zone-top" class="hidden">
+                <h3>🏆 Топ гравців</h3>
+                <div class="top-tabs">
+                    <button class="top-tab-btn active" id="top-btn-level" onclick="loadTop('level')">🥇 За рівнем</button>
+                    <button class="top-tab-btn" id="top-btn-gold" onclick="loadTop('gold')">💰 За золотом</button>
+                    <button class="top-tab-btn" id="top-btn-kills" onclick="loadTop('kills')">⚔️ За вбивствами</button>
+                </div>
+                <div class="top-list" id="top-list">
+                    <p style="text-align: center; opacity: 0.6;">Завантаження...</p>
                 </div>
             </div>
 
