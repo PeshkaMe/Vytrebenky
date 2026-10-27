@@ -14,6 +14,15 @@ app.use(express.static(path.join(__dirname, '../client')));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+const SHOP_ITEMS = [
+    { id: "potion_hp_small", price: 4 },
+    { id: "potion_mp_small", price: 6 },
+    { id: "energy_drink", price: 8 },
+    { id: "elixir_hp", price: 0 },
+    { id: "elixir_mp", price: 0 },
+    { id: "elixir_sp", price: 0 }
+];
+
 // ==========================================
 // ПІДКЛЮЧЕННЯ ДО NEON
 // ==========================================
@@ -121,8 +130,168 @@ function generateCode() {
 // ==========================================
 // SOCKET.IO
 // ==========================================
-io.on('connection', (socket) => {
-    console.log('Гравець підключився:', socket.id);
+    io.on('connection', (socket) => {
+        console.log('Гравець підключився:', socket.id);
+
+        socket.on('claim_battle_reward', async ({ username, monsterLevel }) => {
+        let data = result.rows[0].data;
+            
+            // ⚠️ АНТИ-ЧИТ: Перевірка, чи не занадто сильний монстр
+            if (monsterLevel > data.level + 5) {
+                console.log(`⚠️ ANTI-CHEAT: ${username} спробував вбити монстра рівня ${monsterLevel} на рівні ${data.level}`);
+                return socket.emit('action_error', 'Неможливо отримати нагороду за цього монстра.');
+            }
+        try {
+            const result = await pool.query('SELECT data FROM player_data WHERE username = $1', [username]);
+            if (result.rows.length === 0) return;
+
+            let data = result.rows[0].data;
+            
+            // Сервер самостійно рахує нагороду
+            const diff = data.level - monsterLevel;
+            const baseGold = monsterLevel * 3 + Math.floor(Math.random() * 5) + 1;
+            const baseXP = monsterLevel * 10 + 5;
+            let multiplier = 1.0;
+            
+            if (diff > 0) multiplier = Math.max(0.2, 1 - diff * 0.1);
+            else if (diff < 0) multiplier = Math.min(2.5, 1 + Math.abs(diff) * 0.15);
+
+            const goldGained = Math.floor(baseGold * multiplier);
+            const xpGained = Math.floor(baseXP * multiplier);
+
+            data.gold += goldGained;
+            data.xp += xpGained;
+            data.totalKills = (data.totalKills || 0) + 1;
+
+            // Перевірка на новий рівень
+            let levelUpMsg = "";
+            const getXpNeeded = (lvl) => 100 + (lvl - 1) * 50;
+            while (data.xp >= getXpNeeded(data.level)) {
+                data.xp -= getXpNeeded(data.level);
+                data.level += 1;
+                levelUpMsg = ` Вітаємо! Новий рівень: ${data.level}!`;
+            }
+
+            await pool.query('UPDATE player_data SET data = $1 WHERE username = $2', [JSON.stringify(data), username]);
+            
+            socket.emit('battle_reward_claimed', { 
+                gold: goldGained, 
+                xp: xpGained, 
+                levelUpMsg, 
+                updatedData: data 
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    socket.on('buy_item', async ({ username, itemId }) => {
+        try {
+            const result = await pool.query('SELECT data FROM player_data WHERE username = $1', [username]);
+            if (result.rows.length === 0) return;
+
+            let data = result.rows[0].data;
+            const shopItem = SHOP_ITEMS.find(i => i.id === itemId);
+
+            if (!shopItem) return socket.emit('action_error', 'Предмет не знайдено');
+            if (data.gold < shopItem.price) return socket.emit('action_error', 'Недостатньо золота!');
+
+            // Сервер сам віднімає золото і додає предмет
+            data.gold -= shopItem.price;
+            data.inventory.push({ 
+                type: 'consumable', 
+                id: shopItem.id, 
+                instanceId: Date.now().toString() + Math.random(), 
+                status: 'AVAILABLE' 
+            });
+            
+            if (!data.dailyQuests) data.dailyQuests = {};
+            data.dailyQuests.purchases = (data.dailyQuests.purchases || 0) + 1;
+
+            await pool.query('UPDATE player_data SET data = $1 WHERE username = $2', [JSON.stringify(data), username]);
+            
+            // Відправляємо оновлені дані назад клієнту
+            socket.emit('action_success', { message: 'Успішно куплено!', updatedData: data });
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    // server.js
+    socket.on('explore_reward', async ({ username }) => {
+        try {
+            const result = await pool.query('SELECT data FROM player_data WHERE username = $1', [username]);
+            if (result.rows.length === 0) return;
+
+            let data = result.rows[0].data;
+            
+            // Сервер рахує нагороду
+            const goldGain = Math.floor(5 + data.level * 3 + Math.random() * 6);
+            const xpGain = Math.floor(5 + data.level * 4 + Math.random() * 9);
+            
+            data.gold += goldGain;
+            data.xp += xpGain;
+            
+            let levelUpMsg = "";
+            const getXpNeeded = (lvl) => 100 + (lvl - 1) * 50;
+            while (data.xp >= getXpNeeded(data.level)) {
+                data.xp -= getXpNeeded(data.level);
+                data.level += 1;
+                levelUpMsg = ` Вітаємо! Новий рівень: ${data.level}!`;
+            }
+
+            await pool.query('UPDATE player_data SET data = $1 WHERE username = $2', [JSON.stringify(data), username]);
+            
+            socket.emit('explore_reward_claimed', { 
+                gold: goldGain, 
+                xp: xpGain, 
+                levelUpMsg, 
+                updatedData: data 
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    socket.on('upgrade_item', async ({ username, instanceId, source, slot, index }) => {
+        try {
+            const result = await pool.query('SELECT data FROM player_data WHERE username = $1', [username]);
+            if (result.rows.length === 0) return;
+
+            let data = result.rows[0].data;
+            let item = null;
+
+            if (source === 'equipped') {
+                item = data.equipment[slot];
+            } else if (source === 'inventory') {
+                item = data.inventory[index];
+            }
+
+            if (!item || item.instanceId !== instanceId) {
+                return socket.emit('action_error', 'Предмет не знайдено');
+            }
+
+            const nextLevel = (item.upgradeLevel || 0) + 1;
+            if (nextLevel > 5) return socket.emit('action_error', 'Максимальний рівень');
+
+            const cost = nextLevel * 50;
+            if (data.gold < cost) return socket.emit('action_error', 'Недостатньо золота!');
+
+            // Покращуємо
+            data.gold -= cost;
+            item.upgradeLevel = nextLevel;
+            if (item.attack) item.attack += 2;
+            if (item.defense) item.defense += 1;
+            if (item.hp) item.hp += 5;
+            if (item.sp) item.sp += 2;
+
+            await pool.query('UPDATE player_data SET data = $1 WHERE username = $2', [JSON.stringify(data), username]);
+            
+            socket.emit('action_success', { message: `${item.name} покращено до рівня ${nextLevel}!`, updatedData: data });
+        } catch (err) {
+            console.error(err);
+        }
+    });
 
     // ---------- ЧАТ ----------
     socket.on('send_chat_message', (data) => {
@@ -478,12 +647,30 @@ io.on('connection', (socket) => {
     socket.on('save_player', async ({ name, data }) => {
         if (!name || !data) return;
         try {
+            // 1. Отримуємо старі дані з БД
+            const result = await pool.query('SELECT data FROM player_data WHERE username = $1', [name]);
+            if (result.rows.length === 0) return;
+            
+            const oldData = result.rows[0].data;
+
+            // 2. Базова валідація (Анти-чит)
+            // Якщо гравець надіслав золото, яке різко більше за старе, ігноруємо це
+            if (data.gold > oldData.gold + 150) { 
+                console.log(`⚠️ ANTI-CHEAT: ${name} спробував накрутити золото (${oldData.gold} -> ${data.gold})`);
+                data.gold = oldData.gold; // Відкат
+            }
+            
+            // Якщо рівень стрибнув більше ніж на 1
+            if (data.level > oldData.level + 1) {
+                console.log(`⚠️ ANTI-CHEAT: ${name} спробував накрутити рівень (${oldData.level} -> ${data.level})`);
+                data.level = oldData.level;
+                data.xp = oldData.xp;
+            }
+
+            // 3. Зберігаємо перевірені дані
             await pool.query(
-                `INSERT INTO player_data (username, data, updated_at)
-                 VALUES ($1, $2, NOW())
-                 ON CONFLICT (username)
-                 DO UPDATE SET data = $2, updated_at = NOW()`,
-                [name, JSON.stringify(data)]
+                `UPDATE player_data SET data = $1, updated_at = NOW() WHERE username = $2`,
+                [JSON.stringify(data), name]
             );
         } catch (err) {
             console.error('Помилка збереження:', err);
