@@ -8,6 +8,31 @@ socket.on('chat_message', (data) => {
     addLog(`[${data.user}]: ${data.text}`, 'clear');
 });
 
+socket.on('action_success', (res) => {
+    player = res.updatedData; // Оновлюємо дані з сервера
+    updateUI();
+    addLog(res.message, "clear");
+});
+
+socket.on('action_error', (msg) => {
+    addLog(msg, "danger");
+});
+
+socket.on('battle_reward_claimed', (res) => {
+    player = res.updatedData;
+    let msg = `Перемога! +${res.gold} золота, +${res.xp} досвіду.${res.levelUpMsg}`;
+    addBattleLog(msg);
+    addLog(msg, "clear");
+    updateUI();
+});
+
+socket.on('explore_reward_claimed', (res) => {
+    player = res.updatedData;
+    let msg = `🎁 Ви знайшли скарб! +${res.gold} золота, +${res.xp} досвіду.${res.levelUpMsg}`;
+    addLog(msg, "clear");
+    updateUI();
+});
+
 // ⚠️ ВИПРАВЛЕНО: перевірка __unverified (захист від обходу верифікації через localStorage)
 socket.on('player_loaded', (savedPlayer) => {
     if (savedPlayer && savedPlayer.__unverified) {
@@ -1072,67 +1097,15 @@ function startBattle(monster) {
 }
 
 function giveReward() {
-    console.log("🎁 giveReward() викликано");
     if (!player) return;
-    try {
-        const goldGain = Math.floor(5 + player.level * 3 + Math.random() * 6);
-        const xpGain = Math.floor(5 + player.level * 4 + Math.random() * 9);
-        player.gold += goldGain;
-        player.xp += xpGain;
-        let msg = `🎁 Ви знайшли скарб у ${currentLocation.name}! +${goldGain} золота, +${xpGain} досвіду.`;
+    
+    // Відправляємо запит на сервер
+    socket.emit('explore_reward', { username: player.name });
 
-        if (Math.random() < 0.20) {
-            const heroClass = player.heroClass || player.class;
-            const subClass = player.subClass || player.subclass;
-            const droppedItem = getRandomLootDrop(heroClass, subClass);
-            if (droppedItem) {
-                const slotMap = { armor: 'armor', weapon: 'weapon', helmet: 'helmet', ring: 'accessory' };
-                const stats = droppedItem.stats || {};
-                const newEquip = {
-                    type: 'equip',
-                    id: droppedItem.id,
-                    instanceId: Date.now().toString() + Math.random(),
-                    status: 'DROPPED',
-                    attack: stats.str || stats.attack || 0,
-                    defense: droppedItem.def || stats.def || stats.defense || 0,
-                    hp: droppedItem.hpBonus || stats.hp || 0,
-                    mp: droppedItem.mpBonus || stats.mp || stats.int || 0,
-                    sp: droppedItem.spBonus || stats.sp || stats.agi || 0,
-                    icon: droppedItem.icon || '🛡️',
-                    name: droppedItem.name,
-                    slot: slotMap[droppedItem.slotType] || 'armor',
-                    sellPrice: 20,
-                    upgradeLevel: 0
-                };
-                player.inventory.push(newEquip);
-                msg += ` Також ви знайшли: ${newEquip.icon} ${newEquip.name}!`;
-            }
-        }
-
-        const xpNeeded = getXpForLevel(player.level);
-        while (player.xp >= xpNeeded) {
-            player.xp -= xpNeeded;
-            player.level += 1;
-            msg += ` Вітаємо! Рівень ${player.level}!`;
-            const newNeeded = getXpForLevel(player.level);
-            if (player.xp >= newNeeded) continue;
-        }
-
-        addBattleLog(msg);
-        addLog(msg, "clear");
-        document.getElementById('arena-idle').classList.remove('hidden');
-        document.getElementById('arena-battle').classList.add('hidden');
-        currentMonster = null;
-        updateUI();
-        savePlayerData();
-    } catch (err) {
-        console.error("❌ Помилка в giveReward():", err);
-        addLog("Помилка при видачі нагороди.", "danger");
-        document.getElementById('arena-idle').classList.remove('hidden');
-        document.getElementById('arena-battle').classList.add('hidden');
-        currentMonster = null;
-        updateUI();
-    }
+    document.getElementById('arena-idle').classList.remove('hidden');
+    document.getElementById('arena-battle').classList.add('hidden');
+    currentMonster = null;
+    updateUI();
 }
 
 function showRandomEvent() {
@@ -1217,66 +1190,14 @@ function endBattle(victory) {
     playerBlocking = false;
     if (victory) {
         player.dailyQuests.kills = (player.dailyQuests.kills || 0) + 1;
-        player.totalKills = (player.totalKills || 0) + 1;
         checkDailyReset();
 
-        const monster = currentMonster;
-        const diff = player.level - monster.level;
-        const baseGold = monster.level * 3 + Math.floor(Math.random() * 5) + 1;
-        const baseXP = monster.level * 10 + 5;
-        let multiplier = 1.0;
-        if (diff > 0) multiplier = Math.max(0.2, 1 - diff * 0.1);
-        else if (diff < 0) multiplier = Math.min(2.5, 1 + Math.abs(diff) * 0.15);
-        const goldGained = Math.floor(baseGold * multiplier);
-        const xpGained = Math.floor(baseXP * multiplier);
+        // Відправляємо запит на сервер, щоб він видав нагороду
+        socket.emit('claim_battle_reward', { 
+            username: player.name, 
+            monsterLevel: currentMonster.level 
+        });
 
-        let lootChance = 0.20;
-        if (diff > 0) lootChance = Math.max(0.05, 0.20 - diff * 0.02);
-        else if (diff < 0) lootChance = Math.min(0.40, 0.20 + Math.abs(diff) * 0.03);
-
-        player.gold += goldGained;
-        player.xp += xpGained;
-        let msg = `Перемога! +${goldGained} золота, +${xpGained} досвіду.`;
-
-        if (Math.random() <= lootChance) {
-            const heroClass = player.heroClass || player.class;
-            const subClass = player.subClass || player.subclass;
-            const droppedItem = getRandomLootDrop(heroClass, subClass);
-            if (droppedItem) {
-                const slotMap = { armor: 'armor', weapon: 'weapon', helmet: 'helmet', ring: 'accessory' };
-                const stats = droppedItem.stats || {};
-                const newEquip = {
-                    type: 'equip',
-                    id: droppedItem.id,
-                    instanceId: Date.now().toString() + Math.random(),
-                    status: 'DROPPED',
-                    attack: stats.str || stats.attack || 0,
-                    defense: droppedItem.def || stats.def || stats.defense || 0,
-                    hp: droppedItem.hpBonus || stats.hp || 0,
-                    mp: droppedItem.mpBonus || stats.mp || stats.int || 0,
-                    sp: droppedItem.spBonus || stats.sp || stats.agi || 0,
-                    icon: droppedItem.icon || '🛡️',
-                    name: droppedItem.name,
-                    slot: slotMap[droppedItem.slotType] || 'armor',
-                    sellPrice: 20,
-                    upgradeLevel: 0
-                };
-                player.inventory.push(newEquip);
-                msg += ` 🎒 Ви знайшли: ${newEquip.icon} ${newEquip.name}!`;
-            }
-        }
-
-        const xpNeeded = getXpForLevel(player.level);
-        while (player.xp >= xpNeeded) {
-            player.xp -= xpNeeded;
-            player.level += 1;
-            msg += ` Вітаємо! Рівень ${player.level}!`;
-            const newNeeded = getXpForLevel(player.level);
-            if (player.xp >= newNeeded) continue;
-        }
-
-        addBattleLog(msg);
-        addLog(msg, "clear");
     } else {
         const goldLost = Math.floor(Math.random() * 2) + 1;
         player.gold = Math.max(0, player.gold - goldLost);
@@ -1288,6 +1209,7 @@ function endBattle(victory) {
     document.getElementById('arena-battle').classList.add('hidden');
     currentMonster = null;
     updateUI();
+
 }
 
 function fleeBattle() {
@@ -1556,15 +1478,7 @@ function renderShop() {
 
 function buyItem(itemId) {
     if (!player) return;
-    const shopItem = SHOP_ITEMS.find(i => i.id === itemId);
-    if (!shopItem) return;
-    if (player.gold < shopItem.price) { addLog("Недостатньо золота!", "danger"); return; }
-    player.gold -= shopItem.price;
-    player.inventory.push({ type: 'consumable', id: shopItem.id, instanceId: Date.now().toString() + Math.random(), status: 'AVAILABLE' });
-    player.dailyQuests.purchases = (player.dailyQuests.purchases || 0) + 1;
-    checkDailyReset();
-    addLog(`Придбано ${shopItem.name}.`, "clear");
-    updateUI();
+    socket.emit('buy_item', { username: player.name, itemId: itemId });
 }
 
 function renderBlacksmith() {
@@ -1606,29 +1520,16 @@ function renderBlacksmith() {
     });
 }
 
+// script.js
 function upgradeItem(instanceId, source, slot, index) {
     if (!player) return;
-    let item = null;
-    if (source === 'equipped') {
-        item = player.equipment[slot];
-    } else if (source === 'inventory') {
-        item = player.inventory[index];
-    }
-    if (!item) return;
-    const nextLevel = (item.upgradeLevel || 0) + 1;
-    const cost = nextLevel * 50;
-    if (player.gold < cost) {
-        addLog("Недостатньо золота для покращення!", "danger");
-        return;
-    }
-    player.gold -= cost;
-    item.upgradeLevel = nextLevel;
-    if (item.attack) item.attack += 2;
-    if (item.defense) item.defense += 1;
-    if (item.hp) item.hp += 5;
-    if (item.sp) item.sp += 2;
-    addLog(`${item.name} покращено до рівня ${nextLevel}!`, "clear");
-    updateUI();
+    socket.emit('upgrade_item', { 
+        username: player.name, 
+        instanceId: instanceId, 
+        source: source, 
+        slot: slot, 
+        index: index 
+    });
 }
 
 // ==========================================
